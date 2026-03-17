@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>金时出库单</title>
+    <title>金时出库单-A4打印模板（飞书多维表版）</title>
     <style>
-        /* 全局样式 - 和你原始文件逻辑一致 */
+        /* 保留所有原有样式，仅调整数据选择区 */
         * {
             margin: 0;
             padding: 0;
@@ -23,7 +23,7 @@
             gap: 20px;
         }
 
-        /* 数据选择区 */
+        /* 数据选择区（简化，仅保留按钮） */
         .data-select {
             width: 300px;
             background: #fff;
@@ -35,29 +35,25 @@
             margin-bottom: 15px;
             color: #333;
         }
-        .data-list {
-            list-style: none;
-            margin-bottom: 20px;
-        }
-        .data-item {
+        /* 选中数据预览（新增：展示已选数据） */
+        .selected-data-preview {
             padding: 10px;
-            border: 1px solid #e5e5e5;
+            border: 1px dashed #1677ff;
             border-radius: 4px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
+            margin: 15px 0;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            color: #666;
         }
-        .data-item:hover {
+        .selected-data-preview.has-data {
+            color: #333;
             background-color: #f0f7ff;
-        }
-        .data-item.active {
-            background: #1677ff;
-            color: #fff;
-            border-color: #1677ff;
         }
         .btn-group {
             display: flex;
             gap: 10px;
+            flex-direction: column;
         }
         button {
             padding: 8px 16px;
@@ -66,16 +62,16 @@
             cursor: pointer;
             font-size: 14px;
         }
-        .btn-select {
-            background: #1677ff;
+        .btn-pick {
+            background-color: #1677ff;
             color: #fff;
         }
         .btn-print {
-            background: #52c41a;
+            background-color: #52c41a;
             color: #fff;
         }
 
-        /* A4打印预览区 */
+        /* A4打印预览区（和之前完全一致） */
         .print-preview {
             flex: 1;
             background: #fff;
@@ -88,7 +84,6 @@
             color: #333;
             text-align: center;
         }
-        /* A4纸张核心样式（严格适配A4尺寸） */
         .a4-paper {
             width: 210mm;
             min-height: 297mm;
@@ -98,7 +93,6 @@
             background: #fff;
             box-shadow: 0 0 5px rgba(0,0,0,0.2);
         }
-        /* 出库单内容样式（和你截图里的格式对齐） */
         .outbound-order {
             width: 100%;
         }
@@ -134,7 +128,7 @@
             font-size: 14px;
         }
 
-        /* 打印专属样式（只打印A4内容，隐藏选择区） */
+        /* 打印样式（和之前完全一致） */
         @media print {
             body {
                 background: none;
@@ -145,7 +139,7 @@
                 max-width: none;
                 margin: 0;
             }
-            .data-select, .print-preview h3, .btn-group {
+            .data-select, .print-preview h3 {
                 display: none;
             }
             .print-preview {
@@ -170,65 +164,22 @@
 </head>
 <body>
     <div class="container">
-        <!-- 数据选择区（单选模式） -->
+        <!-- 数据选择区（改为飞书多维表选择按钮） -->
         <div class="data-select">
             <h3>出库单数据选择</h3>
-            <ul class="data-list" id="dataList">
-                <!-- 模拟你截图里的测试数据 -->
-                <li class="data-item" data-id="1" data-data='{
-                    "出库单号": "JSCK03060002",
-                    "客户": "测试4",
-                    "对方名称": "测试4",
-                    "日期": "2026/03/06",
-                    "结算方式": "结算",
-                    "结算金价/克": "",
-                    "支付方式": "",
-                    "材质": "黄金",
-                    "产品名称": "",
-                    "总重": "",
-                    "净重": "",
-                    "工费单价": "",
-                    "实售附加": "",
-                    "抵料克重": "",
-                    "需补料重": "0.00",
-                    "旧换工费": "",
-                    "总价": "0",
-                    "制单人": "",
-                    "客户签收": ""
-                }'>
-                    JSCK03060002 - 测试4
-                </li>
-                <li class="data-item" data-id="2" data-data='{
-                    "出库单号": "JSCK03060001",
-                    "客户": "测试1",
-                    "对方名称": "测试1",
-                    "日期": "2026/03/06",
-                    "结算方式": "结算",
-                    "结算金价/克": "",
-                    "支付方式": "",
-                    "材质": "黄金",
-                    "产品名称": "",
-                    "总重": "",
-                    "净重": "",
-                    "工费单价": "",
-                    "实售附加": "",
-                    "抵料克重": "",
-                    "需补料重": "0.00",
-                    "旧换工费": "",
-                    "总价": "0",
-                    "制单人": "",
-                    "客户签收": ""
-                }'>
-                    JSCK03060001 - 测试1
-                </li>
-            </ul>
+            <button class="btn-pick" id="pickFeishuBaseData">选择飞书多维表数据</button>
+            
+            <!-- 已选数据预览 -->
+            <div class="selected-data-preview" id="selectedPreview">
+                未选择任何数据
+            </div>
+
             <div class="btn-group">
-                <button class="btn-select" id="confirmSelect">确认选择</button>
-                <button class="btn-print" onclick="window.print()">打印出库单</button>
+                <button class="btn-print" id="printBtn" disabled onclick="window.print()">打印出库单</button>
             </div>
         </div>
 
-        <!-- A4打印预览区（和你截图格式一致） -->
+        <!-- A4打印预览区（结构不变） -->
         <div class="print-preview">
             <h3>A4打印预览</h3>
             <div class="a4-paper">
@@ -297,65 +248,134 @@
         </div>
     </div>
 
-    <!-- 仅引入飞书SDK（和你仓库里的文件对应，无任何配置/授权） -->
-   <script src="lark-sdk.umd.js" defer></script>
+    <!-- 引入飞书SDK（和你仓库文件对应） -->
+    <script src="./lark-sdk.umd.js"></script>
 
     <script>
-        // 全局变量：存储选中的单条数据
-        let selectedData = null;
-        
-        // 1. 单选逻辑：点击数据项高亮选中
-        const dataItems = document.querySelectorAll('.data-item');
-        dataItems.forEach(item => {
-            item.addEventListener('click', () => {
-                // 清除所有选中状态
-                dataItems.forEach(i => i.classList.remove('active'));
-                // 选中当前项并存储数据
-                item.classList.add('active');
-                selectedData = JSON.parse(item.getAttribute('data-data'));
-            });
-        });
-        
-        // 2. 确认选择：渲染预览 + 控制台打印数据详情
-        document.getElementById('confirmSelect').addEventListener('click', () => {
-            if (!selectedData) {
-                alert('请先选择一条出库单数据！');
-                return;
+        // 全局变量：存储选中的多维表数据
+        let selectedBaseData = null;
+        // 飞书多维表配置（需替换为你自己的多维表信息）
+        const BASE_CONFIG = {
+            appToken: "你的多维表应用Token", // 多维表设置-开发信息-App Token
+            tableId: "你的数据表ID",           // 数据表-设置-数据表ID
+            fieldMap: { // 多维表字段ID → 出库单字段映射（需替换为你的实际字段ID）
+                "fldxxxxxxxx1": "出库单号",
+                "fldxxxxxxxx2": "客户",
+                "fldxxxxxxxx3": "对方名称",
+                "fldxxxxxxxx4": "日期",
+                "fldxxxxxxxx5": "结算方式",
+                "fldxxxxxxxx6": "结算金价/克",
+                "fldxxxxxxxx7": "支付方式",
+                "fldxxxxxxxx8": "材质",
+                "fldxxxxxxxx9": "产品名称",
+                "fldxxxxxxxx10": "总重",
+                "fldxxxxxxxx11": "净重",
+                "fldxxxxxxxx12": "工费单价",
+                "fldxxxxxxxx13": "实售附加",
+                "fldxxxxxxxx14": "抵料克重",
+                "fldxxxxxxxx15": "需补料重",
+                "fldxxxxxxxx16": "旧换工费",
+                "fldxxxxxxxx17": "总价",
+                "fldxxxxxxxx18": "制单人",
+                "fldxxxxxxxx19": "客户签收"
             }
+        };
 
-            // 渲染预览区（替换占位符为选中数据）
-            document.getElementById('preview-customer').textContent = selectedData['客户'];
-            document.getElementById('preview-opponent').textContent = selectedData['对方名称'];
-            document.getElementById('preview-date').textContent = selectedData['日期'];
-            document.getElementById('preview-settle').textContent = selectedData['结算方式'];
-            document.getElementById('preview-gold-price').textContent = selectedData['结算金价/克'];
-            document.getElementById('preview-order-no').textContent = selectedData['出库单号'];
-            document.getElementById('preview-pay-type').textContent = selectedData['支付方式'];
-            document.getElementById('preview-material').textContent = selectedData['材质'];
-            document.getElementById('preview-product').textContent = selectedData['产品名称'];
-            document.getElementById('preview-total-weight').textContent = selectedData['总重'];
-            document.getElementById('preview-net-weight').textContent = selectedData['净重'];
-            document.getElementById('preview-fee-unit').textContent = selectedData['工费单价'];
-            document.getElementById('preview-additional').textContent = selectedData['实售附加'];
-            document.getElementById('preview-offset-weight').textContent = selectedData['抵料克重'];
-            document.getElementById('preview-supplement-weight').textContent = selectedData['需补料重'];
-            document.getElementById('preview-old-fee').textContent = selectedData['旧换工费'];
-            document.getElementById('preview-total-price').textContent = selectedData['总价'];
-            document.getElementById('preview-maker').textContent = selectedData['制单人'];
-            document.getElementById('preview-sign').textContent = selectedData['客户签收'];
+        // 初始化飞书SDK（极简版，无需appId授权，适配多维表选择器）
+        if (window.lark) {
+            lark.init({
+                timeout: 5000
+            });
+            console.log("飞书SDK初始化成功");
+        } else {
+            alert("飞书SDK加载失败，请检查lark-sdk.umd.js文件路径！");
+        }
 
-            // 控制台打印选中的完整数据详情（和你要求的一致）
-            console.log('===== 选中的出库单数据详情 =====');
-            console.log(JSON.stringify(selectedData, null, 2));
-            
-            alert('数据已选中！预览已更新，可查看控制台日志或点击打印按钮。');
+        // 核心：点击按钮弹出飞书多维表选择弹窗
+        document.getElementById('pickFeishuBaseData').addEventListener('click', async () => {
+            if (!window.lark) return;
+
+            try {
+                // 调用飞书多维表记录选择器（单选模式）
+                const res = await lark.base.openRecordPicker({
+                    appToken: BASE_CONFIG.appToken,
+                    tableId: BASE_CONFIG.tableId,
+                    multiple: false, // 单选：关键配置
+                    size: "middle"   // 弹窗尺寸：small/middle/large
+                });
+
+                // 无选择数据则返回
+                if (!res || !res.records || res.records.length === 0) {
+                    alert("未选择任何数据");
+                    return;
+                }
+
+                // 解析选中的多维表数据（映射为出库单字段）
+                const selectedRecord = res.records[0]; // 单选取第一个
+                selectedBaseData = {};
+                // 遍历字段映射，转换多维表数据格式
+                for (const [fieldId, fieldName] of Object.entries(BASE_CONFIG.fieldMap)) {
+                    // 适配飞书多维表不同字段类型的取值逻辑
+                    const fieldValue = selectedRecord.fields[fieldId];
+                    if (typeof fieldValue === 'undefined') {
+                        selectedBaseData[fieldName] = "";
+                    } else if (Array.isArray(fieldValue)) {
+                        selectedBaseData[fieldName] = fieldValue.join(","); // 多选项拼接
+                    } else if (fieldValue?.text) {
+                        selectedBaseData[fieldName] = fieldValue.text; // 关联字段取文本
+                    } else {
+                        selectedBaseData[fieldName] = String(fieldValue); // 基础字段直接转字符串
+                    }
+                }
+
+                // 更新已选数据预览
+                const previewDom = document.getElementById('selectedPreview');
+                previewDom.textContent = `已选：${selectedBaseData['出库单号']} - ${selectedBaseData['客户']}`;
+                previewDom.classList.add('has-data');
+
+                // 渲染A4预览区
+                renderPreview(selectedBaseData);
+
+                // 控制台打印完整数据详情（格式化）
+                console.log('===== 选中的飞书多维表出库单数据 =====');
+                console.log(JSON.stringify(selectedBaseData, null, 2));
+
+                // 启用打印按钮
+                document.getElementById('printBtn').disabled = false;
+                alert("数据选择成功！可点击打印按钮输出A4出库单");
+
+            } catch (err) {
+                console.error("飞书多维表选择失败：", err);
+                // 兼容飞书SDK错误码
+                if (err.code === "USER_CANCEL") {
+                    alert("你取消了数据选择");
+                } else {
+                    alert(`选择失败：${err.message || "请检查多维表配置/权限"}`);
+                }
+            }
         });
 
-        // 可选：验证SDK是否引入成功（仅打印日志，无实际功能）
-        if (window.lark) {
-            console.log('lark-sdk.umd.js 引入成功！');
-        } else {
-            console.warn('lark-sdk.umd.js 未找到，请检查文件路径！');
+        // 渲染预览区数据
+        function renderPreview(data) {
+            document.getElementById('preview-customer').textContent = data['客户'] || "";
+            document.getElementById('preview-opponent').textContent = data['对方名称'] || "";
+            document.getElementById('preview-date').textContent = data['日期'] || "";
+            document.getElementById('preview-settle').textContent = data['结算方式'] || "";
+            document.getElementById('preview-gold-price').textContent = data['结算金价/克'] || "";
+            document.getElementById('preview-order-no').textContent = data['出库单号'] || "";
+            document.getElementById('preview-pay-type').textContent = data['支付方式'] || "";
+            document.getElementById('preview-material').textContent = data['材质'] || "";
+            document.getElementById('preview-product').textContent = data['产品名称'] || "";
+            document.getElementById('preview-total-weight').textContent = data['总重'] || "";
+            document.getElementById('preview-net-weight').textContent = data['净重'] || "";
+            document.getElementById('preview-fee-unit').textContent = data['工费单价'] || "";
+            document.getElementById('preview-additional').textContent = data['实售附加'] || "";
+            document.getElementById('preview-offset-weight').textContent = data['抵料克重'] || "";
+            document.getElementById('preview-supplement-weight').textContent = data['需补料重'] || "";
+            document.getElementById('preview-old-fee').textContent = data['旧换工费'] || "";
+            document.getElementById('preview-total-price').textContent = data['总价'] || "";
+            document.getElementById('preview-maker').textContent = data['制单人'] || "";
+            document.getElementById('preview-sign').textContent = data['客户签收'] || "";
         }
     </script>
 </body>
