@@ -40,34 +40,6 @@
             }
         }
 
-        /* 屏幕调试区 */
-        .debug-panel {
-            background: #f0f7ff;
-            border: 1px solid #007fff;
-            border-radius: 6px;
-            padding: 12px;
-            margin-bottom: 20px;
-            font-size: 13px;
-            font-family: monospace;
-            max-height: 300px;
-            overflow: auto;
-        }
-        .debug-panel h4 {
-            margin-bottom: 8px;
-            color: #0056b3;
-        }
-        .field-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 4px 8px;
-        }
-        .field-item {
-            background: #fff;
-            padding: 2px 6px;
-            border-radius: 3px;
-            border-left: 3px solid #007fff;
-        }
-
         /* 按钮组 */
         .btn-group {
             position: fixed;
@@ -166,17 +138,8 @@
             text-align: left;
             padding-left: 12px;
         }
-        /* 备注行单独处理，但需求中没要求备注，可留空或隐藏 */
-        .remark-row td {
-            background: #f9f9f9;
-        }
-        .remark-label {
-            font-weight: 600;
-            background: #e9e9e9;
-            text-align: center;
-        }
 
-        /* 底部信息 */
+        /* 底部信息：制单人左，客户签收右 */
         .footer-info {
             display: flex;
             justify-content: space-between;
@@ -185,21 +148,17 @@
             padding-top: 12px;
             font-size: 14px;
         }
-        .signature {
-            display: flex;
-            gap: 50px;
-        }
-        .signature span {
+        .signature-left {
             border-bottom: 1px solid #333;
-            min-width: 100px;
+            min-width: 120px;
             display: inline-block;
             text-align: center;
         }
-
-        /* 占位符空值样式 */
-        .empty-placeholder {
-            color: #9aa6b2;
-            font-style: italic;
+        .signature-right {
+            border-bottom: 1px solid #333;
+            min-width: 120px;
+            display: inline-block;
+            text-align: center;
         }
     </style>
 </head>
@@ -210,11 +169,6 @@
         <button class="btn btn-success" onclick="printDocument()">🖨️ 打印</button>
     </div>
 
-    <!-- 调试面板 -->
-    <div class="debug-panel no-print" id="debugPanel">
-        <h4>🔍 字段调试 (选中记录后自动更新)</h4>
-        <div id="fieldDebugContent">暂无数据，请点击「加载单据」选择记录</div>
-    </div>
     <div id="errorTip" class="error-tip no-print" style="display: none;"></div>
 
     <!-- 单据主体 -->
@@ -263,17 +217,13 @@
                     <td class="label-cell">总价</td>
                     <td class="value-cell" id="field_total_price"></td>
                 </tr>
-                <!-- 备注行去掉，因为未要求 -->
             </table>
         </div>
 
-        <!-- 底部：制单人、客户签收 (去掉审核人、打印时间) -->
+        <!-- 底部：制单人左，客户签收右 (去掉审核人、打印时间) -->
         <div class="footer-info">
-            <div class="signature">
-                <span>制单人：</span>
-                <span>客户签收：</span>
-            </div>
-            <!-- 打印时间已移除 -->
+            <div><span class="signature-left">制单人：</span></div>
+            <div><span class="signature-right">客户签收：</span></div>
         </div>
     </div>
 
@@ -296,9 +246,7 @@
                 const raw = fields[fieldId];
                 if (raw === undefined || raw === null) return '';
 
-                // rule 可以是 'text', 'value', 'number', 'date', 'joinText', 或直接返回原始值
                 if (rule === 'text') {
-                    // 如果是数组，取第一个元素的text；如果是对象直接取text；否则转字符串
                     if (Array.isArray(raw) && raw.length > 0) {
                         const first = raw[0];
                         return (first && typeof first === 'object' && first.text) ? first.text : String(first);
@@ -308,7 +256,6 @@
                     return String(raw);
                 }
                 else if (rule === 'value') {
-                    // 取对象的value属性
                     if (Array.isArray(raw) && raw.length > 0) {
                         const first = raw[0];
                         return (first && typeof first === 'object' && first.value !== undefined) ? first.value : String(first);
@@ -318,7 +265,6 @@
                     return String(raw);
                 }
                 else if (rule === 'number') {
-                    // 转为数字，保留两位小数？直接返回数值，显示时格式化
                     const num = parseFloat(raw);
                     return isNaN(num) ? '' : num;
                 }
@@ -326,11 +272,10 @@
                     // 处理毫秒时间戳，转换为北京时间 yyyy-mm-dd
                     if (typeof raw === 'number' || !isNaN(Date.parse(raw))) {
                         let ts = raw;
-                        // 如果大于 1000000000000 说明是毫秒，否则可能是秒？先判断常见情况
                         if (typeof ts === 'number' && ts > 1000000000000) {
                             ts = ts; // 已经是毫秒
                         } else if (typeof ts === 'number' && ts < 10000000000) {
-                            ts = ts * 1000; // 假设是秒
+                            ts = ts * 1000;
                         } else if (typeof ts === 'string' && /^\d+$/.test(ts)) {
                             ts = parseInt(ts);
                             if (ts > 1000000000000) ts = ts; else ts = ts * 1000;
@@ -346,7 +291,6 @@
                     return '';
                 }
                 else if (rule === 'joinText') {
-                    // 数组每个元素取text后拼接
                     if (Array.isArray(raw)) {
                         const texts = raw.map(item => {
                             if (item && typeof item === 'object' && item.text) return item.text;
@@ -359,33 +303,8 @@
                     return String(raw);
                 }
                 else {
-                    // 默认直接返回原始值，如果是对象则尝试toString
                     return typeof raw === 'object' ? JSON.stringify(raw) : String(raw);
                 }
-            }
-
-            // 渲染调试面板
-            function renderDebugFields(fields, recordId) {
-                const container = document.getElementById('fieldDebugContent');
-                if (!fields || Object.keys(fields).length === 0) {
-                    container.innerHTML = '⚠️ 该记录没有字段数据';
-                    return;
-                }
-                let html = `<p><strong>记录ID：</strong> ${recordId}</p>`;
-                html += '<div class="field-list">';
-                for (const [key, value] of Object.entries(fields)) {
-                    let display = value;
-                    if (typeof value === 'object') {
-                        try {
-                            display = JSON.stringify(value).substring(0, 60) + (JSON.stringify(value).length > 60 ? '…' : '');
-                        } catch (e) {
-                            display = '[复杂对象]';
-                        }
-                    }
-                    html += `<div class="field-item"><strong>${key}</strong> : ${display}</div>`;
-                }
-                html += '</div>';
-                container.innerHTML = html;
             }
 
             // 根据映射填充页面
@@ -404,7 +323,7 @@
                 setFieldValue('field_net_gold_weight', extractFieldValue(fields, 'fldskrMb67', 'number'));
                 setFieldValue('field_labor_price', extractFieldValue(fields, 'fldwryId9s', 'number'));
                 setFieldValue('field_actual_extra', extractFieldValue(fields, 'fld4taZPc3', 'number'));
-                setFieldValue('field_offset_weight', extractFieldValue(fields, 'fldskrMb67', 'number')); // 与净金重相同字段，按需求保留
+                setFieldValue('field_offset_weight', extractFieldValue(fields, 'fldskrMb67', 'number')); // 与净金重相同字段
                 setFieldValue('field_need_supply', extractFieldValue(fields, 'fldpUwDne6', 'number'));
                 setFieldValue('field_old_exchange_fee', extractFieldValue(fields, 'flduElGPI0', 'number'));
                 setFieldValue('field_total_price', extractFieldValue(fields, 'fld7SS6pKr', 'number'));
@@ -475,22 +394,19 @@
                     if (!record) throw new Error('未找到对应记录');
 
                     const fields = record.fields || record;
-                    console.log('✅ 选中记录字段:', fields);
-                    console.table(fields);  // 控制台表格展示
+                    console.log('✅ 选中记录字段详情:');
+                    console.table(fields);  // 在控制台以表格形式打印所有字段
 
-                    renderDebugFields(fields, targetId);
                     fillForm(fields);
 
                 } catch (err) {
                     console.error(err);
                     showError(err.message);
-                    document.getElementById('fieldDebugContent').innerHTML = `加载失败：${err.message}`;
                 }
             };
 
             // 打印
             window.printDocument = function() {
-                // 简单检查是否有数据
                 const customer = document.getElementById('field_customer').innerText;
                 if (customer === '' || customer === '—') {
                     showError('请先加载有效数据再打印');
