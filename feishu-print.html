@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>金时出库单</title>
+    <style>
+        /* 全局样式 - 和你原始文件逻辑一致 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "微软雅黑", sans-serif;
+        }
+        body {
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            gap: 20px;
+        }
+
+        /* 数据选择区 */
+        .data-select {
+            width: 300px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .data-select h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .data-list {
+            list-style: none;
+            margin-bottom: 20px;
+        }
+        .data-item {
+            padding: 10px;
+            border: 1px solid #e5e5e5;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .data-item:hover {
+            background-color: #f0f7ff;
+        }
+        .data-item.active {
+            background: #1677ff;
+            color: #fff;
+            border-color: #1677ff;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-select {
+            background: #1677ff;
+            color: #fff;
+        }
+        .btn-print {
+            background: #52c41a;
+            color: #fff;
+        }
+
+        /* A4打印预览区 */
+        .print-preview {
+            flex: 1;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .print-preview h3 {
+            margin-bottom: 15px;
+            color: #333;
+            text-align: center;
+        }
+        /* A4纸张核心样式（严格适配A4尺寸） */
+        .a4-paper {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            padding: 20mm;
+            border: 1px solid #ddd;
+            background: #fff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+        /* 出库单内容样式（和你截图里的格式对齐） */
+        .outbound-order {
+            width: 100%;
+        }
+        .order-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .order-header h2 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        .order-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .order-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .order-table th, .order-table td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: center;
+        }
+        .order-footer {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+        }
+
+        /* 打印专属样式（只打印A4内容，隐藏选择区） */
+        @media print {
+            body {
+                background: none;
+                padding: 0;
+            }
+            .container {
+                display: block;
+                max-width: none;
+                margin: 0;
+            }
+            .data-select, .print-preview h3, .btn-group {
+                display: none;
+            }
+            .print-preview {
+                padding: 0;
+                background: none;
+                box-shadow: none;
+            }
+            .a4-paper {
+                width: 210mm;
+                height: 297mm;
+                border: none;
+                box-shadow: none;
+                margin: 0;
+                padding: 0;
+            }
+            @page {
+                size: A4;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 数据选择区（单选模式） -->
+        <div class="data-select">
+            <h3>出库单数据选择</h3>
+            <ul class="data-list" id="dataList">
+                <!-- 模拟你截图里的测试数据 -->
+                <li class="data-item" data-id="1" data-data='{
+                    "出库单号": "JSCK03060002",
+                    "客户": "测试4",
+                    "对方名称": "测试4",
+                    "日期": "2026/03/06",
+                    "结算方式": "结算",
+                    "结算金价/克": "",
+                    "支付方式": "",
+                    "材质": "黄金",
+                    "产品名称": "",
+                    "总重": "",
+                    "净重": "",
+                    "工费单价": "",
+                    "实售附加": "",
+                    "抵料克重": "",
+                    "需补料重": "0.00",
+                    "旧换工费": "",
+                    "总价": "0",
+                    "制单人": "",
+                    "客户签收": ""
+                }'>
+                    JSCK03060002 - 测试4
+                </li>
+                <li class="data-item" data-id="2" data-data='{
+                    "出库单号": "JSCK03060001",
+                    "客户": "测试1",
+                    "对方名称": "测试1",
+                    "日期": "2026/03/06",
+                    "结算方式": "结算",
+                    "结算金价/克": "",
+                    "支付方式": "",
+                    "材质": "黄金",
+                    "产品名称": "",
+                    "总重": "",
+                    "净重": "",
+                    "工费单价": "",
+                    "实售附加": "",
+                    "抵料克重": "",
+                    "需补料重": "0.00",
+                    "旧换工费": "",
+                    "总价": "0",
+                    "制单人": "",
+                    "客户签收": ""
+                }'>
+                    JSCK03060001 - 测试1
+                </li>
+            </ul>
+            <div class="btn-group">
+                <button class="btn-select" id="confirmSelect">确认选择</button>
+                <button class="btn-print" onclick="window.print()">打印出库单</button>
+            </div>
+        </div>
+
+        <!-- A4打印预览区（和你截图格式一致） -->
+        <div class="print-preview">
+            <h3>A4打印预览</h3>
+            <div class="a4-paper">
+                <div class="outbound-order">
+                    <div class="order-header">
+                        <h2>金时出库单</h2>
+                    </div>
+                    <div class="order-info">
+                        <div>
+                            <span>客户：<span id="preview-customer">【客户】</span></span>
+                            &nbsp;&nbsp;&nbsp;&nbsp;
+                            <span>对方名称：<span id="preview-opponent">【对方名称】</span></span>
+                        </div>
+                        <div>日期：<span id="preview-date">【日期】</span></div>
+                    </div>
+                    <div class="order-info">
+                        <div>结算方式：<span id="preview-settle">【结算方式】</span></div>
+                        <div>结算金价/克：<span id="preview-gold-price">【结算金价/克】</span></div>
+                        <div>出库单号：<span id="preview-order-no">【出库单号】</span></div>
+                        <div>支付方式：<span id="preview-pay-type">【支付方式】</span></div>
+                    </div>
+                    <table class="order-table">
+                        <thead>
+                            <tr>
+                                <th>材质</th>
+                                <th>产品名称</th>
+                                <th>总重</th>
+                                <th>净重</th>
+                                <th>工费单价</th>
+                                <th>实售附加</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td id="preview-material">【材质】</td>
+                                <td id="preview-product">【产品名称】</td>
+                                <td id="preview-total-weight">【总重】</td>
+                                <td id="preview-net-weight">【净重】</td>
+                                <td id="preview-fee-unit">【工费单价】</td>
+                                <td id="preview-additional">【实售附加】</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <table class="order-table">
+                        <tbody>
+                            <tr>
+                                <th>抵料克重</th>
+                                <th>需补料重</th>
+                                <th>旧换工费</th>
+                                <th>总价</th>
+                            </tr>
+                            <tr>
+                                <td id="preview-offset-weight">【抵料克重】</td>
+                                <td id="preview-supplement-weight">【需补料重】</td>
+                                <td id="preview-old-fee">【旧换工费】</td>
+                                <td id="preview-total-price">【总价】</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="order-footer">
+                        <div>制单人：<span id="preview-maker">【制单人】</span></div>
+                        <div>客户签收：<span id="preview-sign">【客户签收】</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 仅引入飞书SDK（和你仓库里的文件对应，无任何配置/授权） -->
+   <script src="lark-sdk.umd.js" defer></script>
+
+    <script>
+        // 全局变量：存储选中的单条数据
+        let selectedData = null;
+        
+        // 1. 单选逻辑：点击数据项高亮选中
+        const dataItems = document.querySelectorAll('.data-item');
+        dataItems.forEach(item => {
+            item.addEventListener('click', () => {
+                // 清除所有选中状态
+                dataItems.forEach(i => i.classList.remove('active'));
+                // 选中当前项并存储数据
+                item.classList.add('active');
+                selectedData = JSON.parse(item.getAttribute('data-data'));
+            });
+        });
+        
+        // 2. 确认选择：渲染预览 + 控制台打印数据详情
+        document.getElementById('confirmSelect').addEventListener('click', () => {
+            if (!selectedData) {
+                alert('请先选择一条出库单数据！');
+                return;
+            }
+
+            // 渲染预览区（替换占位符为选中数据）
+            document.getElementById('preview-customer').textContent = selectedData['客户'];
+            document.getElementById('preview-opponent').textContent = selectedData['对方名称'];
+            document.getElementById('preview-date').textContent = selectedData['日期'];
+            document.getElementById('preview-settle').textContent = selectedData['结算方式'];
+            document.getElementById('preview-gold-price').textContent = selectedData['结算金价/克'];
+            document.getElementById('preview-order-no').textContent = selectedData['出库单号'];
+            document.getElementById('preview-pay-type').textContent = selectedData['支付方式'];
+            document.getElementById('preview-material').textContent = selectedData['材质'];
+            document.getElementById('preview-product').textContent = selectedData['产品名称'];
+            document.getElementById('preview-total-weight').textContent = selectedData['总重'];
+            document.getElementById('preview-net-weight').textContent = selectedData['净重'];
+            document.getElementById('preview-fee-unit').textContent = selectedData['工费单价'];
+            document.getElementById('preview-additional').textContent = selectedData['实售附加'];
+            document.getElementById('preview-offset-weight').textContent = selectedData['抵料克重'];
+            document.getElementById('preview-supplement-weight').textContent = selectedData['需补料重'];
+            document.getElementById('preview-old-fee').textContent = selectedData['旧换工费'];
+            document.getElementById('preview-total-price').textContent = selectedData['总价'];
+            document.getElementById('preview-maker').textContent = selectedData['制单人'];
+            document.getElementById('preview-sign').textContent = selectedData['客户签收'];
+
+            // 控制台打印选中的完整数据详情（和你要求的一致）
+            console.log('===== 选中的出库单数据详情 =====');
+            console.log(JSON.stringify(selectedData, null, 2));
+            
+            alert('数据已选中！预览已更新，可查看控制台日志或点击打印按钮。');
+        });
+
+        // 可选：验证SDK是否引入成功（仅打印日志，无实际功能）
+        if (window.lark) {
+            console.log('lark-sdk.umd.js 引入成功！');
+        } else {
+            console.warn('lark-sdk.umd.js 未找到，请检查文件路径！');
+        }
+    </script>
+</body>
+</html>
