@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>金时出库单 (A4 单选调试版)</title>
+    <title>金时出库单 (字段映射版)</title>
     <!-- 飞书多维表格 SDK (UMD) 确保文件在同一目录 -->
     <script src="lark-sdk.umd.js" defer></script>
     <style>
@@ -15,8 +15,8 @@
             font-family: '仿宋', 'SimSun', serif;
         }
         body {
-            width: 210mm; /* A4 宽度 */
-            min-height: 297mm; /* A4 高度 */
+            width: 210mm;
+            min-height: 297mm;
             margin: 0 auto;
             padding: 10mm 12mm;
             background: #fff;
@@ -24,7 +24,6 @@
             line-height: 1.5;
             color: #000;
         }
-        /* 打印时隐藏调试区、按钮和提示 */
         @media print {
             .no-print {
                 display: none !important;
@@ -36,17 +35,12 @@
                 size: A4;
                 margin: 10mm 12mm;
             }
-            .debug-panel {
-                display: none !important;
-            }
-            .field-placeholder {
+            .field-value {
                 border-bottom: 1px solid #000 !important;
-                color: #000 !important;
-                background: transparent !important;
             }
         }
 
-        /* 屏幕显示辅助 */
+        /* 屏幕调试区 */
         .debug-panel {
             background: #f0f7ff;
             border: 1px solid #007fff;
@@ -55,135 +49,23 @@
             margin-bottom: 20px;
             font-size: 13px;
             font-family: monospace;
-            white-space: pre-wrap;
-            word-break: break-all;
             max-height: 300px;
             overflow: auto;
         }
         .debug-panel h4 {
             margin-bottom: 8px;
             color: #0056b3;
-            font-weight: 600;
         }
         .field-list {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 6px 12px;
+            gap: 4px 8px;
         }
         .field-item {
             background: #fff;
-            padding: 4px 8px;
-            border-radius: 4px;
+            padding: 2px 6px;
+            border-radius: 3px;
             border-left: 3px solid #007fff;
-        }
-        .field-item strong {
-            color: #d32f2f;
-        }
-
-        /* 主单据样式 */
-        .invoice-title {
-            text-align: center;
-            font-size: 28px;
-            font-weight: bold;
-            letter-spacing: 4px;
-            margin-bottom: 16px;
-            border-bottom: 2px solid #333;
-            padding-bottom: 8px;
-        }
-
-        /* 基础信息网格 (4列) */
-        .base-info {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 12px 15px;
-            margin-bottom: 24px;
-            border: 1px solid #aaa;
-            padding: 12px 15px;
-            background: #fefefe;
-        }
-        .info-item {
-            display: flex;
-            align-items: baseline;
-            font-size: 15px;
-        }
-        .info-label {
-            font-weight: 600;
-            width: 70px; /* 根据内容调整 */
-            flex-shrink: 0;
-            color: #2c3e50;
-        }
-        .info-label::after {
-            content: "：";
-        }
-        .info-value {
-            flex: 1;
-            border-bottom: 1px dashed #666;
-            min-height: 22px;
-            padding: 0 4px;
-            color: #0b1f33;
-        }
-        /* 占位符样式 (未映射时显示灰色斜体) */
-        .field-placeholder {
-            color: #9aa6b2;
-            font-style: italic;
-            border-bottom: 1px dashed #ccc;
-        }
-
-        /* 明细表格 (两列表格，展示所有字段) */
-        .detail-section {
-            margin: 24px 0 16px;
-            border: 1px solid #333;
-        }
-        .detail-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .detail-table td {
-            border: 1px solid #333;
-            padding: 10px 12px;
-            vertical-align: middle;
-        }
-        .detail-table .label-cell {
-            font-weight: 600;
-            background-color: #f3f3f3;
-            width: 18%;
-            white-space: nowrap;
-        }
-        .detail-table .value-cell {
-            width: 32%;
-        }
-        /* 备注行 */
-        .remark-row {
-            border-top: 2px solid #333;
-        }
-        .remark-row td {
-            background: #f9f9f9;
-            font-weight: normal;
-        }
-        .remark-title {
-            font-weight: 600;
-            background: #e9e9e9;
-            text-align: center;
-        }
-
-        /* 底部信息 */
-        .footer-info {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 30px;
-            font-size: 13px;
-            border-top: 1px dashed #333;
-            padding-top: 12px;
-        }
-        .signature {
-            display: flex;
-            gap: 30px;
-        }
-        .signature span {
-            border-bottom: 1px solid #333;
-            min-width: 100px;
-            display: inline-block;
-            text-align: center;
         }
 
         /* 按钮组 */
@@ -200,338 +82,431 @@
             border: none;
             border-radius: 4px;
             font-size: 14px;
-            font-weight: 500;
             cursor: pointer;
             color: white;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
-        .btn-primary {
-            background: #007fff;
-        }
-        .btn-primary:hover {
-            background: #0066cc;
-        }
-        .btn-success {
-            background: #2ecc71;
-        }
-        .btn-success:hover {
-            background: #27ae60;
-        }
-        .btn-warning {
-            background: #f39c12;
-        }
-        .btn-warning:hover {
-            background: #e67e22;
-        }
+        .btn-primary { background: #007fff; }
+        .btn-primary:hover { background: #0066cc; }
+        .btn-success { background: #2ecc71; }
+        .btn-success:hover { background: #27ae60; }
         .error-tip {
             background: #ffebee;
             border-left: 4px solid #d32f2f;
             padding: 10px 15px;
             margin: 15px 0;
-            font-size: 14px;
             color: #b71c1c;
         }
 
-        /* 提示操作区 */
-        .action-hint {
-            background: #e8f0fe;
-            padding: 8px 12px;
-            margin-bottom: 15px;
-            border-radius: 4px;
+        /* 单据标题 */
+        .invoice-title {
+            text-align: center;
+            font-size: 28px;
+            font-weight: bold;
+            letter-spacing: 4px;
+            margin-bottom: 16px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 8px;
+        }
+
+        /* 头部信息 - 5列网格 */
+        .header-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px 15px;
+            border: 1px solid #333;
+            padding: 12px 15px;
+            margin-bottom: 24px;
+            background: #fefefe;
+        }
+        .header-item {
+            display: flex;
+            align-items: baseline;
+        }
+        .header-label {
+            font-weight: 600;
+            width: 75px;
+            flex-shrink: 0;
+            color: #2c3e50;
+        }
+        .header-label::after {
+            content: "：";
+        }
+        .field-value {
+            flex: 1;
+            border-bottom: 1px dashed #666;
+            min-height: 22px;
+            padding: 0 4px;
+            color: #0b1f33;
+        }
+
+        /* 明细表格 */
+        .detail-section {
+            margin: 24px 0 16px;
+            border: 1px solid #333;
+        }
+        .detail-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .detail-table td {
+            border: 1px solid #333;
+            padding: 10px 8px;
+            vertical-align: middle;
+        }
+        .label-cell {
+            font-weight: 600;
+            background-color: #f3f3f3;
+            width: 15%;
+            white-space: nowrap;
+            text-align: center;
+        }
+        .value-cell {
+            width: 35%;
+            text-align: left;
+            padding-left: 12px;
+        }
+        /* 备注行单独处理，但需求中没要求备注，可留空或隐藏 */
+        .remark-row td {
+            background: #f9f9f9;
+        }
+        .remark-label {
+            font-weight: 600;
+            background: #e9e9e9;
+            text-align: center;
+        }
+
+        /* 底部信息 */
+        .footer-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            border-top: 1px dashed #333;
+            padding-top: 12px;
             font-size: 14px;
+        }
+        .signature {
+            display: flex;
+            gap: 50px;
+        }
+        .signature span {
+            border-bottom: 1px solid #333;
+            min-width: 100px;
+            display: inline-block;
+            text-align: center;
+        }
+
+        /* 占位符空值样式 */
+        .empty-placeholder {
+            color: #9aa6b2;
+            font-style: italic;
         }
     </style>
 </head>
 <body>
-    <!-- 操作按钮 (不打印) -->
+    <!-- 操作按钮 -->
     <div class="btn-group no-print">
-        <button class="btn btn-primary" onclick="loadSelectedData()">📋 选择单据并加载</button>
-        <button class="btn btn-success" onclick="printDocument()">🖨️ 打印当前单据</button>
-        <button class="btn btn-warning" onclick="clearDebug()">🗑️ 清空调试</button>
+        <button class="btn btn-primary" onclick="loadSelectedData()">📋 加载单据</button>
+        <button class="btn btn-success" onclick="printDocument()">🖨️ 打印</button>
     </div>
 
-    <!-- 调试信息面板 (不打印) 显示选中记录的字段 -->
+    <!-- 调试面板 -->
     <div class="debug-panel no-print" id="debugPanel">
-        <h4>🔍 调试信息：选中记录字段列表 (点击“选择单据并加载”后显示)</h4>
-        <div id="fieldDebugContent">暂无数据，请先选择一条记录</div>
+        <h4>🔍 字段调试 (选中记录后自动更新)</h4>
+        <div id="fieldDebugContent">暂无数据，请点击「加载单据」选择记录</div>
     </div>
-
-    <!-- 错误提示区 -->
     <div id="errorTip" class="error-tip no-print" style="display: none;"></div>
 
-    <!-- 主单据内容 -->
+    <!-- 单据主体 -->
     <div class="invoice-container">
         <div class="invoice-title">金时出库单</div>
 
-        <!-- 基础信息区域 (4列) 标签已写死，值留待后续映射，目前显示占位符 -->
-        <div class="base-info">
-            <div class="info-item"><span class="info-label">客户</span><span class="info-value field-placeholder" id="field_customer">(待映射)</span></div>
-            <div class="info-item"><span class="info-label">对方名称</span><span class="info-value field-placeholder" id="field_counterparty">(待映射)</span></div>
-            <div class="info-item"><span class="info-label">结算方式</span><span class="info-value field-placeholder" id="field_settle_method">(待映射)</span></div>
-            <div class="info-item"><span class="info-label">结算单价</span><span class="info-value field-placeholder" id="field_settle_price">(待映射)</span></div>
-            <div class="info-item"><span class="info-label">支付方式</span><span class="info-value field-placeholder" id="field_payment">(待映射)</span></div>
-            <div class="info-item"><span class="info-label">日期</span><span class="info-value field-placeholder" id="field_date">(待映射)</span></div>
-            <div class="info-item"><span class="info-label">出库单号</span><span class="info-value field-placeholder" id="field_out_no">(待映射)</span></div>
-            <div class="info-item"><span class="info-label">结算金额/克</span><span class="info-value field-placeholder" id="field_settle_per_gram">(待映射)</span></div>
+        <!-- 头部：客户、日期、结算方式、结算金额/克、出库单号 -->
+        <div class="header-grid">
+            <div class="header-item"><span class="header-label">客户</span><span class="field-value" id="field_customer"></span></div>
+            <div class="header-item"><span class="header-label">日期</span><span class="field-value" id="field_date"></span></div>
+            <div class="header-item"><span class="header-label">结算方式</span><span class="field-value" id="field_settle_method"></span></div>
+            <div class="header-item"><span class="header-label">结算金额/克</span><span class="field-value" id="field_settle_per_gram"></span></div>
+            <div class="header-item"><span class="header-label">出库单号</span><span class="field-value" id="field_out_no"></span></div>
         </div>
 
-        <!-- 明细表格 (两列布局，包含图片中所有字段) -->
+        <!-- 明细表格：10个字段按顺序排为5行2列 -->
         <div class="detail-section">
             <table class="detail-table">
                 <tr>
-                    <td class="label-cell">材质</td>
-                    <td class="value-cell field-placeholder" id="field_material">(待映射)</td>
-                    <td class="label-cell">黄金</td>
-                    <td class="value-cell field-placeholder" id="field_gold">(待映射)</td>
-                </tr>
-                <tr>
                     <td class="label-cell">产品名称</td>
-                    <td class="value-cell field-placeholder" id="field_product_name">(待映射)</td>
+                    <td class="value-cell" id="field_product_name"></td>
+                    <td class="label-cell">材质</td>
+                    <td class="value-cell" id="field_material"></td>
+                </tr>
+                <tr>
                     <td class="label-cell">总重</td>
-                    <td class="value-cell field-placeholder" id="field_total_weight">(待映射)</td>
-                </tr>
-                <tr>
+                    <td class="value-cell" id="field_total_weight"></td>
                     <td class="label-cell">净金重</td>
-                    <td class="value-cell field-placeholder" id="field_net_gold_weight">(待映射)</td>
+                    <td class="value-cell" id="field_net_gold_weight"></td>
+                </tr>
+                <tr>
                     <td class="label-cell">工费单价</td>
-                    <td class="value-cell field-placeholder" id="field_labor_price">(待映射)</td>
-                </tr>
-                <tr>
+                    <td class="value-cell" id="field_labor_price"></td>
                     <td class="label-cell">实售附加</td>
-                    <td class="value-cell field-placeholder" id="field_actual_extra">(待映射)</td>
+                    <td class="value-cell" id="field_actual_extra"></td>
+                </tr>
+                <tr>
                     <td class="label-cell">抵料克重</td>
-                    <td class="value-cell field-placeholder" id="field_offset_weight">(待映射)</td>
-                </tr>
-                <tr>
+                    <td class="value-cell" id="field_offset_weight"></td>
                     <td class="label-cell">需补料重</td>
-                    <td class="value-cell field-placeholder" id="field_need_supply">(待映射)</td>
-                    <td class="label-cell">旧换工费</td>
-                    <td class="value-cell field-placeholder" id="field_old_exchange_fee">(待映射)</td>
+                    <td class="value-cell" id="field_need_supply"></td>
                 </tr>
                 <tr>
+                    <td class="label-cell">旧换工费</td>
+                    <td class="value-cell" id="field_old_exchange_fee"></td>
                     <td class="label-cell">总价</td>
-                    <td class="value-cell field-placeholder" id="field_total_price">(待映射)</td>
-                    <td class="label-cell"></td>
-                    <td class="value-cell"></td>
+                    <td class="value-cell" id="field_total_price"></td>
                 </tr>
-                <!-- 备注行 占据两列？这里用合并单元格 -->
-                <tr class="remark-row">
-                    <td class="remark-title">备注</td>
-                    <td colspan="3" class="field-placeholder" id="field_remark">(待映射)</td>
-                </tr>
+                <!-- 备注行去掉，因为未要求 -->
             </table>
         </div>
 
-        <!-- 底部签章等 -->
+        <!-- 底部：制单人、客户签收 (去掉审核人、打印时间) -->
         <div class="footer-info">
             <div class="signature">
                 <span>制单人：</span>
-                <span>审核人：</span>
                 <span>客户签收：</span>
             </div>
-            <div>打印时间：<span id="printTime"></span></div>
+            <!-- 打印时间已移除 -->
         </div>
     </div>
 
     <script>
         (function() {
-            // ========== 辅助函数 ==========
-            // 更新打印时间
-            function updatePrintTime() {
-                const now = new Date();
-                const formatted = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-                document.getElementById('printTime').textContent = formatted;
-            }
-            window.updatePrintTime = updatePrintTime;
-
-            // 清空调试面板 (按钮调用)
-            window.clearDebug = function() {
-                document.getElementById('fieldDebugContent').innerHTML = '暂无数据，请先选择一条记录';
-                document.getElementById('debugPanel').style.backgroundColor = '#f0f7ff';
-            };
-
-            // 显示错误
+            // ---------- 辅助函数 ----------
             function showError(msg) {
                 const errTip = document.getElementById('errorTip');
                 errTip.textContent = `❌ 错误：${msg}`;
                 errTip.style.display = 'block';
                 console.error(msg);
             }
-
-            // 隐藏错误
             function hideError() {
                 document.getElementById('errorTip').style.display = 'none';
             }
 
-            // 将字段对象显示在调试面板
+            // 提取字段通用函数：根据字段定义获取值
+            function extractFieldValue(fields, fieldId, rule) {
+                if (!fields || !fieldId) return '';
+                const raw = fields[fieldId];
+                if (raw === undefined || raw === null) return '';
+
+                // rule 可以是 'text', 'value', 'number', 'date', 'joinText', 或直接返回原始值
+                if (rule === 'text') {
+                    // 如果是数组，取第一个元素的text；如果是对象直接取text；否则转字符串
+                    if (Array.isArray(raw) && raw.length > 0) {
+                        const first = raw[0];
+                        return (first && typeof first === 'object' && first.text) ? first.text : String(first);
+                    } else if (typeof raw === 'object' && raw !== null) {
+                        return raw.text !== undefined ? raw.text : String(raw);
+                    }
+                    return String(raw);
+                }
+                else if (rule === 'value') {
+                    // 取对象的value属性
+                    if (Array.isArray(raw) && raw.length > 0) {
+                        const first = raw[0];
+                        return (first && typeof first === 'object' && first.value !== undefined) ? first.value : String(first);
+                    } else if (typeof raw === 'object' && raw !== null) {
+                        return raw.value !== undefined ? raw.value : String(raw);
+                    }
+                    return String(raw);
+                }
+                else if (rule === 'number') {
+                    // 转为数字，保留两位小数？直接返回数值，显示时格式化
+                    const num = parseFloat(raw);
+                    return isNaN(num) ? '' : num;
+                }
+                else if (rule === 'date') {
+                    // 处理毫秒时间戳，转换为北京时间 yyyy-mm-dd
+                    if (typeof raw === 'number' || !isNaN(Date.parse(raw))) {
+                        let ts = raw;
+                        // 如果大于 1000000000000 说明是毫秒，否则可能是秒？先判断常见情况
+                        if (typeof ts === 'number' && ts > 1000000000000) {
+                            ts = ts; // 已经是毫秒
+                        } else if (typeof ts === 'number' && ts < 10000000000) {
+                            ts = ts * 1000; // 假设是秒
+                        } else if (typeof ts === 'string' && /^\d+$/.test(ts)) {
+                            ts = parseInt(ts);
+                            if (ts > 1000000000000) ts = ts; else ts = ts * 1000;
+                        }
+                        const date = new Date(ts);
+                        if (!isNaN(date.getTime())) {
+                            const year = date.getFullYear();
+                            const month = (date.getMonth() + 1).toString().padStart(2,'0');
+                            const day = date.getDate().toString().padStart(2,'0');
+                            return `${year}-${month}-${day}`;
+                        }
+                    }
+                    return '';
+                }
+                else if (rule === 'joinText') {
+                    // 数组每个元素取text后拼接
+                    if (Array.isArray(raw)) {
+                        const texts = raw.map(item => {
+                            if (item && typeof item === 'object' && item.text) return item.text;
+                            return String(item);
+                        }).filter(t => t.trim() !== '');
+                        return texts.join('、');
+                    } else if (typeof raw === 'object' && raw !== null && raw.text) {
+                        return raw.text;
+                    }
+                    return String(raw);
+                }
+                else {
+                    // 默认直接返回原始值，如果是对象则尝试toString
+                    return typeof raw === 'object' ? JSON.stringify(raw) : String(raw);
+                }
+            }
+
+            // 渲染调试面板
             function renderDebugFields(fields, recordId) {
                 const container = document.getElementById('fieldDebugContent');
                 if (!fields || Object.keys(fields).length === 0) {
-                    container.innerHTML = '⚠️ 该记录没有字段数据 (fields 为空)';
+                    container.innerHTML = '⚠️ 该记录没有字段数据';
                     return;
                 }
                 let html = `<p><strong>记录ID：</strong> ${recordId}</p>`;
                 html += '<div class="field-list">';
                 for (const [key, value] of Object.entries(fields)) {
-                    let displayValue = value;
+                    let display = value;
                     if (typeof value === 'object') {
                         try {
-                            displayValue = JSON.stringify(value).substring(0, 50) + (JSON.stringify(value).length > 50 ? '…' : '');
+                            display = JSON.stringify(value).substring(0, 60) + (JSON.stringify(value).length > 60 ? '…' : '');
                         } catch (e) {
-                            displayValue = '[复杂对象]';
+                            display = '[复杂对象]';
                         }
                     }
-                    html += `<div class="field-item"><strong>${key}</strong> : ${displayValue}</div>`;
+                    html += `<div class="field-item"><strong>${key}</strong> : ${display}</div>`;
                 }
                 html += '</div>';
                 container.innerHTML = html;
-                document.getElementById('debugPanel').style.backgroundColor = '#e6f3d0'; // 成功加载后变色提示
             }
 
-            // 核心：选择并加载数据 (单选)
-            window.loadSelectedData = async function() {
-                const errorTip = document.getElementById('errorTip');
-                hideError();
+            // 根据映射填充页面
+            function fillForm(fields) {
+                // 头部
+                setFieldValue('field_customer', extractFieldValue(fields, 'fldRZ3f48d', 'text'));
+                setFieldValue('field_date', extractFieldValue(fields, 'fldlqphDO1', 'date'));
+                setFieldValue('field_settle_method', extractFieldValue(fields, 'fldU0bZp9j', 'text'));
+                setFieldValue('field_settle_per_gram', extractFieldValue(fields, 'fldBP8qj8G', 'number'));
+                setFieldValue('field_out_no', extractFieldValue(fields, 'fldBH4bIGR', 'value'));
 
-                try {
-                    // 1. 检查 SDK
-                    if (!window.bitable || !window.bitable.base || !window.bitable.ui) {
-                        throw new Error('飞书SDK未加载，请确认 lark-sdk.umd.js 存在且正确引用');
+                // 表格
+                setFieldValue('field_product_name', extractFieldValue(fields, 'fldfwaBoti', 'joinText'));
+                setFieldValue('field_material', extractFieldValue(fields, 'fldXBLcZ1R', 'text'));
+                setFieldValue('field_total_weight', extractFieldValue(fields, 'fldTl9D94f', 'number'));
+                setFieldValue('field_net_gold_weight', extractFieldValue(fields, 'fldskrMb67', 'number'));
+                setFieldValue('field_labor_price', extractFieldValue(fields, 'fldwryId9s', 'number'));
+                setFieldValue('field_actual_extra', extractFieldValue(fields, 'fld4taZPc3', 'number'));
+                setFieldValue('field_offset_weight', extractFieldValue(fields, 'fldskrMb67', 'number')); // 与净金重相同字段，按需求保留
+                setFieldValue('field_need_supply', extractFieldValue(fields, 'fldpUwDne6', 'number'));
+                setFieldValue('field_old_exchange_fee', extractFieldValue(fields, 'flduElGPI0', 'number'));
+                setFieldValue('field_total_price', extractFieldValue(fields, 'fld7SS6pKr', 'number'));
+
+                // 对数值字段进行格式化显示（保留两位小数）
+                document.querySelectorAll('[id^="field_"]').forEach(el => {
+                    if (el.id.includes('weight') || el.id.includes('price') || el.id.includes('fee') || el.id.includes('total') || el.id.includes('per_gram')) {
+                        const raw = el.innerText;
+                        if (raw && !isNaN(raw) && raw !== '') {
+                            const num = parseFloat(raw);
+                            el.innerText = num.toFixed(2);
+                        }
                     }
-                    console.log('✅ SDK 已加载');
+                });
+            }
 
+            function setFieldValue(id, value) {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.innerText = (value === '' || value === null || value === undefined) ? '—' : value;
+                }
+            }
+
+            // ---------- 核心：加载数据 ----------
+            window.loadSelectedData = async function() {
+                hideError();
+                try {
+                    if (!window.bitable || !window.bitable.base || !window.bitable.ui) {
+                        throw new Error('飞书SDK未加载');
+                    }
                     const base = window.bitable.base;
-                    
-                    // 2. 获取当前表格信息
                     const selection = await base.getSelection();
                     let tableId = selection?.tableId;
                     let viewId = selection?.viewId;
-
                     if (!tableId) {
                         const activeTable = await base.getActiveTable();
                         tableId = activeTable?.id;
                         viewId = activeTable?.activeViewId;
                     }
-                    if (!tableId || !viewId) {
-                        throw new Error('无法获取当前表格或视图，请先打开一个多维表格视图');
-                    }
-                    console.log(`表格ID: ${tableId}, 视图ID: ${viewId}`);
+                    if (!tableId || !viewId) throw new Error('无法获取表格/视图');
 
-                    // 3. 唤起记录选择对话框 (多选，但我们只取第一个实现“单选”)
+                    // 选择记录 (单选，但SDK返回数组)
                     const selectedIds = await window.bitable.ui.selectRecordIdList(tableId, viewId);
-                    if (!selectedIds || selectedIds.length === 0) {
-                        throw new Error('未选择任何记录，请至少选择一条');
-                    }
-                    console.log('用户选择的记录ID列表:', selectedIds);
-                    
-                    // 取第一个作为当前单据 (如果用户选了多个，提示只加载第一条)
-                    if (selectedIds.length > 1) {
-                        console.warn(`⚠️ 检测到选择了 ${selectedIds.length} 条记录，本模板为单选设计，将只加载第一条记录。`);
-                        // 可在此处添加提示，但继续使用第一条
-                    }
-                    const targetRecordId = selectedIds[0];
+                    if (!selectedIds || selectedIds.length === 0) throw new Error('未选择记录');
+                    const targetId = selectedIds[0];
+                    if (selectedIds.length > 1) console.warn('选择了多条记录，仅加载第一条');
 
-                    // 4. 获取表格实例
                     const table = await base.getActiveTable();
                     if (!table) throw new Error('无法获取表格实例');
 
-                    // 5. 尝试多种方式获取记录详情
+                    // 获取记录
                     let record = null;
-                    // 方法A: 通过 getRecordById
                     try {
-                        record = await table.getRecordById(targetRecordId);
-                        console.log('通过 getRecordById 获取记录成功');
-                    } catch (err) {
-                        console.warn('getRecordById 失败，尝试 getRecordList 后筛选', err);
-                    }
-
-                    // 方法B: 如果A失败，获取所有记录再筛选
-                    if (!record) {
+                        record = await table.getRecordById(targetId);
+                    } catch (e) {
+                        // 备选：拉取列表后筛选
                         const recordsData = await table.getRecordList();
                         let recordsArray = [];
                         if (Array.isArray(recordsData)) recordsArray = recordsData;
                         else if (recordsData?.recordList) recordsArray = recordsData.recordList;
                         else if (recordsData?.records) recordsArray = recordsData.records;
-                        
-                        if (recordsArray.length > 0) {
-                            // 尝试多种ID字段
-                            record = recordsArray.find(r => {
-                                const id = r.recordId || r.id || r._id || r.record_id;
-                                return String(id) === String(targetRecordId);
-                            });
-                        }
+                        record = recordsArray.find(r => {
+                            const id = r.recordId || r.id || r._id || r.record_id;
+                            return String(id) === String(targetId);
+                        });
                     }
 
-                    if (!record) {
-                        throw new Error(`无法找到记录 ID 为 ${targetRecordId} 的数据，请检查记录是否存在`);
-                    }
+                    if (!record) throw new Error('未找到对应记录');
 
-                    console.log('✅ 成功获取记录:', record);
+                    const fields = record.fields || record;
+                    console.log('✅ 选中记录字段:', fields);
+                    console.table(fields);  // 控制台表格展示
 
-                    // 提取 fields (兼容不同结构)
-                    const fields = record.fields || record || {};  // 如果record本身就是fields？保险
-                    // 确保fields是对象
-                    const recordFields = (typeof fields === 'object' && fields !== null) ? fields : {};
-
-                    // 在控制台以表格形式打印字段，方便查看
-                    console.log('📋 选中记录的所有字段 (key-value):');
-                    console.table(recordFields);
-                    console.log('原始字段对象:', recordFields);
-
-                    // 渲染到调试面板
-                    renderDebugFields(recordFields, targetRecordId);
-
-                    // ========== 字段对应关系暂时空出，不填充主页面 ==========
-                    // 但是为了视觉反馈，我们可以在所有占位符上附加title属性显示字段数量
-                    const placeholders = document.querySelectorAll('.field-placeholder');
-                    placeholders.forEach(el => {
-                        el.setAttribute('title', `共有 ${Object.keys(recordFields).length} 个字段，请根据控制台输出映射`);
-                    });
-
-                    // 可选：自动填充一个示例？为了避免误导，我们保持“(待映射)”不变，但可以加一个小提示
-                    // 此处完全不做映射，仅调试输出
-
-                    // 更新打印时间
-                    updatePrintTime();
-
-                    // 成功提示
-                    console.log('✅ 数据加载完成，请在控制台查看字段详情，并据此编写映射代码。');
+                    renderDebugFields(fields, targetId);
+                    fillForm(fields);
 
                 } catch (err) {
-                    console.error('加载失败:', err);
+                    console.error(err);
                     showError(err.message);
-                    // 清空调试面板
                     document.getElementById('fieldDebugContent').innerHTML = `加载失败：${err.message}`;
                 }
             };
 
-            // 打印功能
+            // 打印
             window.printDocument = function() {
-                // 简单检查是否已加载数据 (通过调试面板内容判断)
-                const debugContent = document.getElementById('fieldDebugContent').innerText;
-                if (debugContent.includes('暂无数据') || debugContent.includes('加载失败')) {
-                    showError('请先成功加载一条记录再打印');
+                // 简单检查是否有数据
+                const customer = document.getElementById('field_customer').innerText;
+                if (customer === '' || customer === '—') {
+                    showError('请先加载有效数据再打印');
                     return;
                 }
-                updatePrintTime();
-                // 尝试飞书打印，否则浏览器打印
                 if (window.bitable?.base?.print) {
-                    window.bitable.base.print({
-                        success: () => console.log('飞书打印调用成功'),
-                        fail: (e) => {
-                            console.warn('飞书打印失败，使用浏览器打印', e);
-                            window.print();
-                        }
-                    });
+                    window.bitable.base.print({ fail: () => window.print() });
                 } else {
                     window.print();
                 }
             };
 
-            // 初始化
+            // 初始化清空所有字段显示为占位符
             window.onload = function() {
-                updatePrintTime();
-                console.log('金时出库单模板已加载，字段映射待添加。');
+                const placeholders = document.querySelectorAll('.field-value');
+                placeholders.forEach(el => el.innerText = '—');
             };
         })();
     </script>
