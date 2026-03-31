@@ -3,11 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>金时出库单 (字段映射版)</title>
-    <!-- 飞书多维表格 SDK (UMD) 确保文件在同一目录 -->
+    <title>金时出库单 - 自动读取勾选记录</title>
     <script src="lark-sdk.umd.js" defer></script>
     <style>
-        /* 重置与打印优化 */
         * {
             margin: 0;
             padding: 0;
@@ -39,8 +37,6 @@
                 border-bottom: 1px solid #000 !important;
             }
         }
-
-        /* 按钮组 */
         .btn-group {
             position: fixed;
             top: 15px;
@@ -62,6 +58,8 @@
         .btn-primary:hover { background: #0066cc; }
         .btn-success { background: #2ecc71; }
         .btn-success:hover { background: #27ae60; }
+        .btn-refresh { background: #f39c12; }
+        .btn-refresh:hover { background: #e67e22; }
         .error-tip {
             background: #ffebee;
             border-left: 4px solid #d32f2f;
@@ -69,8 +67,13 @@
             margin: 15px 0;
             color: #b71c1c;
         }
-
-        /* 单据标题 */
+        .info-tip {
+            background: #e8f0fe;
+            border-left: 4px solid #007fff;
+            padding: 10px 15px;
+            margin: 15px 0;
+            color: #0056b3;
+        }
         .invoice-title {
             text-align: center;
             font-size: 28px;
@@ -80,8 +83,6 @@
             border-bottom: 2px solid #333;
             padding-bottom: 8px;
         }
-
-        /* 头部信息 - 5列网格 */
         .header-grid {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
@@ -111,8 +112,6 @@
             padding: 0 4px;
             color: #0b1f33;
         }
-
-        /* 明细表格 */
         .detail-section {
             margin: 24px 0 16px;
             border: 1px solid #333;
@@ -138,8 +137,6 @@
             text-align: left;
             padding-left: 12px;
         }
-
-        /* 底部信息：制单人左，客户签收右 */
         .footer-info {
             display: flex;
             justify-content: space-between;
@@ -163,64 +160,40 @@
     </style>
 </head>
 <body>
-    <!-- 操作按钮 -->
     <div class="btn-group no-print">
-        <button class="btn btn-primary" onclick="loadSelectedData()">📋 加载单据</button>
+        <button class="btn btn-refresh" onclick="refreshFromSelection()">🔄 刷新</button>
         <button class="btn btn-success" onclick="printDocument()">🖨️ 打印</button>
     </div>
 
+    <div id="infoTip" class="info-tip no-print" style="display: none;"></div>
     <div id="errorTip" class="error-tip no-print" style="display: none;"></div>
 
-    <!-- 单据主体 -->
     <div class="invoice-container">
         <div class="invoice-title">金时出库单</div>
 
-        <!-- 头部：客户、日期、结算方式、结算金额/克、出库单号 -->
         <div class="header-grid">
-            <div class="header-item"><span class="header-label">客户</span><span class="field-value" id="field_customer"></span></div>
-            <div class="header-item"><span class="header-label">日期</span><span class="field-value" id="field_date"></span></div>
-            <div class="header-item"><span class="header-label">结算方式</span><span class="field-value" id="field_settle_method"></span></div>
-            <div class="header-item"><span class="header-label">结算金额/克</span><span class="field-value" id="field_settle_per_gram"></span></div>
-            <div class="header-item"><span class="header-label">出库单号</span><span class="field-value" id="field_out_no"></span></div>
+            <div class="header-item"><span class="header-label">客户</span><span class="field-value" id="field_customer">—</span></div>
+            <div class="header-item"><span class="header-label">日期</span><span class="field-value" id="field_date">—</span></div>
+            <div class="header-item"><span class="header-label">结算方式</span><span class="field-value" id="field_settle_method">—</span></div>
+            <div class="header-item"><span class="header-label">结算金额/克</span><span class="field-value" id="field_settle_per_gram">—</span></div>
+            <div class="header-item"><span class="header-label">出库单号</span><span class="field-value" id="field_out_no">—</span></div>
         </div>
 
-        <!-- 明细表格：10个字段按顺序排为5行2列 -->
         <div class="detail-section">
             <table class="detail-table">
-                <tr>
-                    <td class="label-cell">产品名称</td>
-                    <td class="value-cell" id="field_product_name"></td>
-                    <td class="label-cell">材质</td>
-                    <td class="value-cell" id="field_material"></td>
-                </tr>
-                <tr>
-                    <td class="label-cell">总重</td>
-                    <td class="value-cell" id="field_total_weight"></td>
-                    <td class="label-cell">净金重</td>
-                    <td class="value-cell" id="field_net_gold_weight"></td>
-                </tr>
-                <tr>
-                    <td class="label-cell">工费单价</td>
-                    <td class="value-cell" id="field_labor_price"></td>
-                    <td class="label-cell">实售附加</td>
-                    <td class="value-cell" id="field_actual_extra"></td>
-                </tr>
-                <tr>
-                    <td class="label-cell">抵料克重</td>
-                    <td class="value-cell" id="field_offset_weight"></td>
-                    <td class="label-cell">需补料重</td>
-                    <td class="value-cell" id="field_need_supply"></td>
-                </tr>
-                <tr>
-                    <td class="label-cell">旧换工费</td>
-                    <td class="value-cell" id="field_old_exchange_fee"></td>
-                    <td class="label-cell">总价</td>
-                    <td class="value-cell" id="field_total_price"></td>
-                </tr>
+                <tr><td class="label-cell">产品名称</td><td class="value-cell" id="field_product_name">—</td>
+                    <td class="label-cell">材质</td><td class="value-cell" id="field_material">—</td></tr>
+                <tr><td class="label-cell">总重</td><td class="value-cell" id="field_total_weight">—</td>
+                    <td class="label-cell">净金重</td><td class="value-cell" id="field_net_gold_weight">—</td></tr>
+                <tr><td class="label-cell">工费单价</td><td class="value-cell" id="field_labor_price">—</td>
+                    <td class="label-cell">实售附加</td><td class="value-cell" id="field_actual_extra">—</td></tr>
+                <tr><td class="label-cell">抵料克重</td><td class="value-cell" id="field_offset_weight">—</td>
+                    <td class="label-cell">需补料重</td><td class="value-cell" id="field_need_supply">—</td></tr>
+                <tr><td class="label-cell">旧换工费</td><td class="value-cell" id="field_old_exchange_fee">—</td>
+                    <td class="label-cell">总价</td><td class="value-cell" id="field_total_price">—</td></tr>
             </table>
         </div>
 
-        <!-- 底部：制单人左，客户签收右 (去掉审核人、打印时间) -->
         <div class="footer-info">
             <div><span class="signature-left">制单人：</span></div>
             <div><span class="signature-right">客户签收：</span></div>
@@ -229,23 +202,28 @@
 
     <script>
         (function() {
-            // ---------- 辅助函数 ----------
+            function showInfo(msg) {
+                const infoDiv = document.getElementById('infoTip');
+                infoDiv.textContent = msg;
+                infoDiv.style.display = 'block';
+                setTimeout(() => { if(infoDiv) infoDiv.style.display = 'none'; }, 5000);
+            }
             function showError(msg) {
-                const errTip = document.getElementById('errorTip');
-                errTip.textContent = `❌ 错误：${msg}`;
-                errTip.style.display = 'block';
+                const errDiv = document.getElementById('errorTip');
+                errDiv.textContent = `❌ ${msg}`;
+                errDiv.style.display = 'block';
                 console.error(msg);
             }
-            function hideError() {
+            function hideMessages() {
+                document.getElementById('infoTip').style.display = 'none';
                 document.getElementById('errorTip').style.display = 'none';
             }
 
-            // 提取字段通用函数：根据字段定义获取值
+            // 字段提取逻辑（与之前相同）
             function extractFieldValue(fields, fieldId, rule) {
                 if (!fields || !fieldId) return '';
                 const raw = fields[fieldId];
                 if (raw === undefined || raw === null) return '';
-
                 if (rule === 'text') {
                     if (Array.isArray(raw) && raw.length > 0) {
                         const first = raw[0];
@@ -269,24 +247,19 @@
                     return isNaN(num) ? '' : num;
                 }
                 else if (rule === 'date') {
-                    // 处理毫秒时间戳，转换为北京时间 yyyy-mm-dd
-                    if (typeof raw === 'number' || !isNaN(Date.parse(raw))) {
-                        let ts = raw;
-                        if (typeof ts === 'number' && ts > 1000000000000) {
-                            ts = ts; // 已经是毫秒
-                        } else if (typeof ts === 'number' && ts < 10000000000) {
-                            ts = ts * 1000;
-                        } else if (typeof ts === 'string' && /^\d+$/.test(ts)) {
-                            ts = parseInt(ts);
-                            if (ts > 1000000000000) ts = ts; else ts = ts * 1000;
-                        }
-                        const date = new Date(ts);
-                        if (!isNaN(date.getTime())) {
-                            const year = date.getFullYear();
-                            const month = (date.getMonth() + 1).toString().padStart(2,'0');
-                            const day = date.getDate().toString().padStart(2,'0');
-                            return `${year}-${month}-${day}`;
-                        }
+                    let ts = raw;
+                    if (typeof ts === 'number' && ts > 1000000000000) ts = ts;
+                    else if (typeof ts === 'number' && ts < 10000000000) ts = ts * 1000;
+                    else if (typeof ts === 'string' && /^\d+$/.test(ts)) {
+                        ts = parseInt(ts);
+                        if (ts > 1000000000000) ts = ts; else ts = ts * 1000;
+                    }
+                    const date = new Date(ts);
+                    if (!isNaN(date.getTime())) {
+                        const year = date.getFullYear();
+                        const month = (date.getMonth() + 1).toString().padStart(2,'0');
+                        const day = date.getDate().toString().padStart(2,'0');
+                        return `${year}-${month}-${day}`;
                     }
                     return '';
                 }
@@ -307,7 +280,13 @@
                 }
             }
 
-            // 根据映射填充页面
+            function setFieldValue(id, value) {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.innerText = (value === '' || value === null || value === undefined) ? '—' : value;
+                }
+            }
+
             function fillForm(fields) {
                 // 头部
                 setFieldValue('field_customer', extractFieldValue(fields, 'fldRZ3f48d', 'text'));
@@ -316,19 +295,19 @@
                 setFieldValue('field_settle_per_gram', extractFieldValue(fields, 'fldBP8qj8G', 'number'));
                 setFieldValue('field_out_no', extractFieldValue(fields, 'fldBH4bIGR', 'value'));
 
-                // 表格
+                // 明细
                 setFieldValue('field_product_name', extractFieldValue(fields, 'fldfwaBoti', 'joinText'));
                 setFieldValue('field_material', extractFieldValue(fields, 'fldXBLcZ1R', 'text'));
                 setFieldValue('field_total_weight', extractFieldValue(fields, 'fldTl9D94f', 'number'));
                 setFieldValue('field_net_gold_weight', extractFieldValue(fields, 'fldskrMb67', 'number'));
                 setFieldValue('field_labor_price', extractFieldValue(fields, 'fldwryId9s', 'number'));
                 setFieldValue('field_actual_extra', extractFieldValue(fields, 'fld4taZPc3', 'number'));
-                setFieldValue('field_offset_weight', extractFieldValue(fields, 'fldskrMb67', 'number')); // 与净金重相同字段
+                setFieldValue('field_offset_weight', extractFieldValue(fields, 'fldskrMb67', 'number'));
                 setFieldValue('field_need_supply', extractFieldValue(fields, 'fldpUwDne6', 'number'));
                 setFieldValue('field_old_exchange_fee', extractFieldValue(fields, 'flduElGPI0', 'number'));
                 setFieldValue('field_total_price', extractFieldValue(fields, 'fld7SS6pKr', 'number'));
 
-                // 对数值字段进行格式化显示（保留两位小数）
+                // 数值格式化
                 document.querySelectorAll('[id^="field_"]').forEach(el => {
                     if (el.id.includes('weight') || el.id.includes('price') || el.id.includes('fee') || el.id.includes('total') || el.id.includes('per_gram')) {
                         const raw = el.innerText;
@@ -340,46 +319,35 @@
                 });
             }
 
-            function setFieldValue(id, value) {
-                const el = document.getElementById(id);
-                if (el) {
-                    el.innerText = (value === '' || value === null || value === undefined) ? '—' : value;
-                }
-            }
-
-            // ---------- 核心：加载数据 ----------
-            window.loadSelectedData = async function() {
-                hideError();
+            // 核心：从当前勾选记录中获取数据
+            async function loadFromSelectedRecords() {
+                hideMessages();
                 try {
-                    if (!window.bitable || !window.bitable.base || !window.bitable.ui) {
-                        throw new Error('飞书SDK未加载');
+                    if (!window.bitable || !window.bitable.base) {
+                        throw new Error('飞书SDK未加载或不在飞书环境中');
                     }
                     const base = window.bitable.base;
+                    // 获取当前视图中的选中记录ID列表（用户手动勾选）
                     const selection = await base.getSelection();
-                    let tableId = selection?.tableId;
-                    let viewId = selection?.viewId;
-                    if (!tableId) {
-                        const activeTable = await base.getActiveTable();
-                        tableId = activeTable?.id;
-                        viewId = activeTable?.activeViewId;
+                    let selectedIds = selection?.recordIds || [];
+                    if (!selectedIds || selectedIds.length === 0) {
+                        showInfo('当前未勾选任何记录，请在表格视图中勾选一条记录后点击“刷新”');
+                        return;
                     }
-                    if (!tableId || !viewId) throw new Error('无法获取表格/视图');
+                    if (selectedIds.length > 1) {
+                        showInfo(`您勾选了 ${selectedIds.length} 条记录，模板仅支持显示第一条，将自动使用第一条数据。`);
+                        selectedIds = [selectedIds[0]];
+                    }
 
-                    // 选择记录 (单选，但SDK返回数组)
-                    const selectedIds = await window.bitable.ui.selectRecordIdList(tableId, viewId);
-                    if (!selectedIds || selectedIds.length === 0) throw new Error('未选择记录');
                     const targetId = selectedIds[0];
-                    if (selectedIds.length > 1) console.warn('选择了多条记录，仅加载第一条');
-
                     const table = await base.getActiveTable();
                     if (!table) throw new Error('无法获取表格实例');
 
-                    // 获取记录
                     let record = null;
                     try {
                         record = await table.getRecordById(targetId);
                     } catch (e) {
-                        // 备选：拉取列表后筛选
+                        // 降级：获取所有记录再筛选
                         const recordsData = await table.getRecordList();
                         let recordsArray = [];
                         if (Array.isArray(recordsData)) recordsArray = recordsData;
@@ -390,26 +358,29 @@
                             return String(id) === String(targetId);
                         });
                     }
-
-                    if (!record) throw new Error('未找到对应记录');
+                    if (!record) throw new Error(`未找到 ID 为 ${targetId} 的记录`);
 
                     const fields = record.fields || record;
-                    console.log('✅ 选中记录字段详情:');
-                    console.table(fields);  // 在控制台以表格形式打印所有字段
-
+                    console.log('自动读取勾选记录字段详情:');
+                    console.table(fields);
                     fillForm(fields);
-
+                    showInfo('数据已加载，可点击打印');
                 } catch (err) {
                     console.error(err);
                     showError(err.message);
                 }
+            }
+
+            // 手动刷新（供按钮调用）
+            window.refreshFromSelection = function() {
+                loadFromSelectedRecords();
             };
 
             // 打印
             window.printDocument = function() {
                 const customer = document.getElementById('field_customer').innerText;
                 if (customer === '' || customer === '—') {
-                    showError('请先加载有效数据再打印');
+                    showError('请先勾选记录并刷新加载数据后再打印');
                     return;
                 }
                 if (window.bitable?.base?.print) {
@@ -419,10 +390,11 @@
                 }
             };
 
-            // 初始化清空所有字段显示为占位符
+            // 页面加载时自动执行一次
             window.onload = function() {
-                const placeholders = document.querySelectorAll('.field-value');
-                placeholders.forEach(el => el.innerText = '—');
+                // 清空所有字段为占位符
+                document.querySelectorAll('.field-value').forEach(el => el.innerText = '—');
+                loadFromSelectedRecords();
             };
         })();
     </script>
