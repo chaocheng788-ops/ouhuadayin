@@ -161,8 +161,8 @@
 </head>
 <body>
     <div class="btn-group no-print">
-        <button class="btn btn-refresh" onclick="refreshFromSelection()">🔄 刷新</button>
-        <button class="btn btn-success" onclick="printDocument()">🖨️ 打印</button>
+        <button class="btn btn-refresh" id="refreshBtn">🔄 刷新</button>
+        <button class="btn btn-success" id="printBtn">🖨️ 打印</button>
     </div>
 
     <div id="infoTip" class="info-tip no-print" style="display: none;"></div>
@@ -202,11 +202,12 @@
 
     <script>
         (function() {
+            // 显示短暂提示
             function showInfo(msg) {
                 const infoDiv = document.getElementById('infoTip');
                 infoDiv.textContent = msg;
                 infoDiv.style.display = 'block';
-                setTimeout(() => { if(infoDiv) infoDiv.style.display = 'none'; }, 5000);
+                setTimeout(() => { if(infoDiv) infoDiv.style.display = 'none'; }, 4000);
             }
             function showError(msg) {
                 const errDiv = document.getElementById('errorTip');
@@ -215,11 +216,13 @@
                 console.error(msg);
             }
             function hideMessages() {
-                document.getElementById('infoTip').style.display = 'none';
-                document.getElementById('errorTip').style.display = 'none';
+                const infoDiv = document.getElementById('infoTip');
+                const errDiv = document.getElementById('errorTip');
+                if(infoDiv) infoDiv.style.display = 'none';
+                if(errDiv) errDiv.style.display = 'none';
             }
 
-            // 字段提取逻辑（与之前相同）
+            // 字段提取逻辑
             function extractFieldValue(fields, fieldId, rule) {
                 if (!fields || !fieldId) return '';
                 const raw = fields[fieldId];
@@ -323,31 +326,36 @@
             async function loadFromSelectedRecords() {
                 hideMessages();
                 try {
+                    // 检查SDK
                     if (!window.bitable || !window.bitable.base) {
-                        throw new Error('飞书SDK未加载或不在飞书环境中');
+                        throw new Error('飞书SDK未加载或不在飞书多维表格环境中');
                     }
                     const base = window.bitable.base;
-                    // 获取当前视图中的选中记录ID列表（用户手动勾选）
+                    
+                    // 获取当前视图中选中的记录ID列表（用户手动勾选的行）
                     const selection = await base.getSelection();
+                    console.log('getSelection 结果:', selection);
                     let selectedIds = selection?.recordIds || [];
                     if (!selectedIds || selectedIds.length === 0) {
-                        showInfo('当前未勾选任何记录，请在表格视图中勾选一条记录后点击“刷新”');
+                        showInfo('未勾选任何记录，请在表格视图中勾选一行记录后点击“刷新”');
                         return;
                     }
                     if (selectedIds.length > 1) {
-                        showInfo(`您勾选了 ${selectedIds.length} 条记录，模板仅支持显示第一条，将自动使用第一条数据。`);
+                        showInfo(`您勾选了 ${selectedIds.length} 条记录，模板仅支持显示第一条，将使用第一条数据。`);
                         selectedIds = [selectedIds[0]];
                     }
-
                     const targetId = selectedIds[0];
                     const table = await base.getActiveTable();
-                    if (!table) throw new Error('无法获取表格实例');
+                    if (!table) throw new Error('无法获取当前表格实例');
 
                     let record = null;
+                    // 方法1: getRecordById
                     try {
                         record = await table.getRecordById(targetId);
-                    } catch (e) {
-                        // 降级：获取所有记录再筛选
+                        console.log('通过 getRecordById 获取记录成功');
+                    } catch (err) {
+                        console.warn('getRecordById 失败，尝试从 recordList 筛选', err);
+                        // 方法2: 获取所有记录后筛选
                         const recordsData = await table.getRecordList();
                         let recordsArray = [];
                         if (Array.isArray(recordsData)) recordsArray = recordsData;
@@ -364,23 +372,21 @@
                     console.log('自动读取勾选记录字段详情:');
                     console.table(fields);
                     fillForm(fields);
-                    showInfo('数据已加载，可点击打印');
+                    showInfo('数据加载成功，可点击打印');
                 } catch (err) {
-                    console.error(err);
+                    console.error('刷新失败:', err);
                     showError(err.message);
                 }
             }
 
-            // 手动刷新（供按钮调用）
-            window.refreshFromSelection = function() {
-                loadFromSelectedRecords();
-            };
-
-            // 打印
+            // 将刷新函数挂载到 window，并确保按钮事件绑定
+            window.refreshFromSelection = loadFromSelectedRecords;
+            
+            // 打印函数
             window.printDocument = function() {
                 const customer = document.getElementById('field_customer').innerText;
                 if (customer === '' || customer === '—') {
-                    showError('请先勾选记录并刷新加载数据后再打印');
+                    showError('请先勾选记录并点击刷新加载数据后再打印');
                     return;
                 }
                 if (window.bitable?.base?.print) {
@@ -390,12 +396,19 @@
                 }
             };
 
-            // 页面加载时自动执行一次
-            window.onload = function() {
-                // 清空所有字段为占位符
-                document.querySelectorAll('.field-value').forEach(el => el.innerText = '—');
+            // 页面加载完成后，绑定按钮事件（防止动态元素未加载）
+            document.addEventListener('DOMContentLoaded', () => {
+                const refreshBtn = document.getElementById('refreshBtn');
+                const printBtn = document.getElementById('printBtn');
+                if (refreshBtn) {
+                    refreshBtn.onclick = () => { loadFromSelectedRecords(); };
+                }
+                if (printBtn) {
+                    printBtn.onclick = () => { window.printDocument(); };
+                }
+                // 初始加载一次
                 loadFromSelectedRecords();
-            };
+            });
         })();
     </script>
 </body>
