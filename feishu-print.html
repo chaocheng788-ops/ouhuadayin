@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>金时出库单</title>
+    <title>金时出库单 (支持记录筛选)</title>
+    <!-- 飞书多维表格 SDK (UMD) -->
     <script src="lark-sdk.umd.js" defer></script>
     <style>
         * {
@@ -37,6 +38,8 @@
                 border-bottom: 1px solid #000 !important;
             }
         }
+
+        /* 按钮组 */
         .btn-group {
             position: fixed;
             top: 15px;
@@ -65,13 +68,8 @@
             margin: 15px 0;
             color: #b71c1c;
         }
-        .info-tip {
-            background: #e8f0fe;
-            border-left: 4px solid #007fff;
-            padding: 10px 15px;
-            margin: 15px 0;
-            color: #0056b3;
-        }
+
+        /* 单据样式 */
         .invoice-title {
             text-align: center;
             font-size: 28px;
@@ -143,261 +141,407 @@
             padding-top: 12px;
             font-size: 14px;
         }
-        .signature-left {
+        .signature-left, .signature-right {
             border-bottom: 1px solid #333;
             min-width: 120px;
             display: inline-block;
             text-align: center;
         }
-        .signature-right {
-            border-bottom: 1px solid #333;
-            min-width: 120px;
-            display: inline-block;
+
+        /* ---------- 自定义模态框样式 ---------- */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(2px);
+        }
+        .modal-content {
+            background-color: #fff;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 12px;
+            width: 80%;
+            max-width: 1100px;
+            max-height: 80%;
+            overflow-y: auto;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+        .modal-header h3 {
+            font-size: 20px;
+            color: #007fff;
+        }
+        .close {
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #aaa;
+        }
+        .close:hover {
+            color: black;
+        }
+        .filter-input {
+            width: 100%;
+            padding: 10px 12px;
+            margin-bottom: 16px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .records-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .records-table th, .records-table td {
+            border: 1px solid #ddd;
+            padding: 8px 10px;
+            text-align: left;
+        }
+        .records-table th {
+            background: #f2f2f2;
+            position: sticky;
+            top: 0;
+        }
+        .records-table tr {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .records-table tr:hover {
+            background: #e6f2ff;
+        }
+        .selected-row {
+            background: #d9eaff;
+        }
+        .no-data {
             text-align: center;
+            padding: 30px;
+            color: #999;
         }
     </style>
 </head>
 <body>
     <div class="btn-group no-print">
-        <button class="btn btn-primary" id="selectBtn">📋 选择记录</button>
-        <button class="btn btn-success" id="printBtn">🖨️ 打印</button>
+        <button class="btn btn-primary" onclick="openRecordSelector()">📋 选择单据</button>
+        <button class="btn btn-success" onclick="printDocument()">🖨️ 打印</button>
     </div>
-
-    <div id="infoTip" class="info-tip no-print" style="display: none;"></div>
     <div id="errorTip" class="error-tip no-print" style="display: none;"></div>
 
+    <!-- 单据主体 -->
     <div class="invoice-container">
         <div class="invoice-title">金时出库单</div>
-
         <div class="header-grid">
-            <div class="header-item"><span class="header-label">客户</span><span class="field-value" id="field_customer">—</span></div>
-            <div class="header-item"><span class="header-label">日期</span><span class="field-value" id="field_date">—</span></div>
-            <div class="header-item"><span class="header-label">结算方式</span><span class="field-value" id="field_settle_method">—</span></div>
-            <div class="header-item"><span class="header-label">结算金额/克</span><span class="field-value" id="field_settle_per_gram">—</span></div>
-            <div class="header-item"><span class="header-label">出库单号</span><span class="field-value" id="field_out_no">—</span></div>
+            <div class="header-item"><span class="header-label">客户</span><span class="field-value" id="field_customer"></span></div>
+            <div class="header-item"><span class="header-label">日期</span><span class="field-value" id="field_date"></span></div>
+            <div class="header-item"><span class="header-label">结算方式</span><span class="field-value" id="field_settle_method"></span></div>
+            <div class="header-item"><span class="header-label">结算金额/克</span><span class="field-value" id="field_settle_per_gram"></span></div>
+            <div class="header-item"><span class="header-label">出库单号</span><span class="field-value" id="field_out_no"></span></div>
         </div>
-
         <div class="detail-section">
             <table class="detail-table">
-                <tr><td class="label-cell">产品名称</td><td class="value-cell" id="field_product_name">—</td>
-                    <td class="label-cell">材质</td><td class="value-cell" id="field_material">—</td></tr>
-                <tr><td class="label-cell">总重</td><td class="value-cell" id="field_total_weight">—</td>
-                    <td class="label-cell">净金重</td><td class="value-cell" id="field_net_gold_weight">—</td></tr>
-                <tr><td class="label-cell">工费单价</td><td class="value-cell" id="field_labor_price">—</td>
-                    <td class="label-cell">实售附加</td><td class="value-cell" id="field_actual_extra">—</td></tr>
-                <tr><td class="label-cell">抵料克重</td><td class="value-cell" id="field_offset_weight">—</td>
-                    <td class="label-cell">需补料重</td><td class="value-cell" id="field_need_supply">—</td></tr>
-                <tr><td class="label-cell">旧换工费</td><td class="value-cell" id="field_old_exchange_fee">—</td>
-                    <td class="label-cell">总价</td><td class="value-cell" id="field_total_price">—</td></tr>
+                <tr><td class="label-cell">产品名称</td><td class="value-cell" id="field_product_name"></td><td class="label-cell">材质</td><td class="value-cell" id="field_material"></td></tr>
+                <tr><td class="label-cell">总重</td><td class="value-cell" id="field_total_weight"></td><td class="label-cell">净金重</td><td class="value-cell" id="field_net_gold_weight"></td></tr>
+                <tr><td class="label-cell">工费单价</td><td class="value-cell" id="field_labor_price"></td><td class="label-cell">实售附加</td><td class="value-cell" id="field_actual_extra"></td></tr>
+                <tr><td class="label-cell">抵料克重</td><td class="value-cell" id="field_offset_weight"></td><td class="label-cell">需补料重</td><td class="value-cell" id="field_need_supply"></td></tr>
+                <tr><td class="label-cell">旧换工费</td><td class="value-cell" id="field_old_exchange_fee"></td><td class="label-cell">总价</td><td class="value-cell" id="field_total_price"></td></tr>
             </table>
         </div>
-
         <div class="footer-info">
             <div><span class="signature-left">制单人：</span></div>
             <div><span class="signature-right">客户签收：</span></div>
         </div>
     </div>
 
+    <!-- 自定义筛选模态框 -->
+    <div id="recordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📋 选择出库记录（支持筛选）</h3>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <input type="text" id="filterKeyword" class="filter-input" placeholder="🔍 输入关键字筛选（客户/单号/产品/材质...）" oninput="filterRecords()">
+            <div style="overflow-x: auto;">
+                <table class="records-table" id="recordsTable">
+                    <thead>
+                        <tr><th>客户</th><th>出库单号</th><th>产品名称</th><th>材质</th><th>日期</th><th>总重</th><th>操作</th></tr>
+                    </thead>
+                    <tbody id="recordsTbody">
+                        <tr><td colspan="7" class="no-data">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 12px; font-size: 12px; color: #666;">💡 点击任意行即可加载该单据，支持实时筛选</div>
+        </div>
+    </div>
+
     <script>
-        (function() {
-            function showInfo(msg) {
-                const infoDiv = document.getElementById('infoTip');
-                infoDiv.textContent = msg;
-                infoDiv.style.display = 'block';
-                setTimeout(() => { if(infoDiv) infoDiv.style.display = 'none'; }, 4000);
+        // 全局存储所有记录和字段映射辅助函数
+        let allRecords = [];        // 存储 { recordId, displayFields, rawFields }
+        let currentFilter = '';
+
+        // ---------- 辅助函数 ----------
+        function showError(msg) {
+            const errTip = document.getElementById('errorTip');
+            errTip.textContent = `❌ 错误：${msg}`;
+            errTip.style.display = 'block';
+            console.error(msg);
+        }
+        function hideError() {
+            document.getElementById('errorTip').style.display = 'none';
+        }
+
+        // 提取字段值（与之前逻辑一致）
+        function extractFieldValue(fields, fieldId, rule) {
+            if (!fields || !fieldId) return '';
+            const raw = fields[fieldId];
+            if (raw === undefined || raw === null) return '';
+            if (rule === 'text') {
+                if (Array.isArray(raw) && raw.length > 0) {
+                    const first = raw[0];
+                    return (first && typeof first === 'object' && first.text) ? first.text : String(first);
+                } else if (typeof raw === 'object' && raw !== null) {
+                    return raw.text !== undefined ? raw.text : String(raw);
+                }
+                return String(raw);
             }
-            function showError(msg) {
-                const errDiv = document.getElementById('errorTip');
-                errDiv.textContent = `❌ ${msg}`;
-                errDiv.style.display = 'block';
-                console.error(msg);
+            else if (rule === 'value') {
+                if (Array.isArray(raw) && raw.length > 0) {
+                    const first = raw[0];
+                    return (first && typeof first === 'object' && first.value !== undefined) ? first.value : String(first);
+                } else if (typeof raw === 'object' && raw !== null) {
+                    return raw.value !== undefined ? raw.value : String(raw);
+                }
+                return String(raw);
             }
-            function hideMessages() {
-                document.getElementById('infoTip').style.display = 'none';
-                document.getElementById('errorTip').style.display = 'none';
+            else if (rule === 'number') {
+                const num = parseFloat(raw);
+                return isNaN(num) ? '' : num;
             }
-
-            // 字段提取逻辑
-            function extractFieldValue(fields, fieldId, rule) {
-                if (!fields || !fieldId) return '';
-                const raw = fields[fieldId];
-                if (raw === undefined || raw === null) return '';
-                if (rule === 'text') {
-                    if (Array.isArray(raw) && raw.length > 0) {
-                        const first = raw[0];
-                        return (first && typeof first === 'object' && first.text) ? first.text : String(first);
-                    } else if (typeof raw === 'object' && raw !== null) {
-                        return raw.text !== undefined ? raw.text : String(raw);
-                    }
-                    return String(raw);
+            else if (rule === 'date') {
+                let ts = raw;
+                if (typeof ts === 'number' && ts > 1000000000000) { /* 毫秒 */ }
+                else if (typeof ts === 'number' && ts < 10000000000) ts = ts * 1000;
+                else if (typeof ts === 'string' && /^\d+$/.test(ts)) {
+                    ts = parseInt(ts);
+                    if (ts < 10000000000) ts = ts * 1000;
                 }
-                else if (rule === 'value') {
-                    if (Array.isArray(raw) && raw.length > 0) {
-                        const first = raw[0];
-                        return (first && typeof first === 'object' && first.value !== undefined) ? first.value : String(first);
-                    } else if (typeof raw === 'object' && raw !== null) {
-                        return raw.value !== undefined ? raw.value : String(raw);
-                    }
-                    return String(raw);
+                const date = new Date(ts);
+                if (!isNaN(date.getTime())) {
+                    const y = date.getFullYear(), m = (date.getMonth()+1).toString().padStart(2,'0'), d = date.getDate().toString().padStart(2,'0');
+                    return `${y}-${m}-${d}`;
                 }
-                else if (rule === 'number') {
-                    const num = parseFloat(raw);
-                    return isNaN(num) ? '' : num;
-                }
-                else if (rule === 'date') {
-                    let ts = raw;
-                    if (typeof ts === 'number' && ts > 1000000000000) ts = ts;
-                    else if (typeof ts === 'number' && ts < 10000000000) ts = ts * 1000;
-                    else if (typeof ts === 'string' && /^\d+$/.test(ts)) {
-                        ts = parseInt(ts);
-                        if (ts > 1000000000000) ts = ts; else ts = ts * 1000;
-                    }
-                    const date = new Date(ts);
-                    if (!isNaN(date.getTime())) {
-                        const year = date.getFullYear();
-                        const month = (date.getMonth() + 1).toString().padStart(2,'0');
-                        const day = date.getDate().toString().padStart(2,'0');
-                        return `${year}-${month}-${day}`;
-                    }
-                    return '';
-                }
-                else if (rule === 'joinText') {
-                    if (Array.isArray(raw)) {
-                        const texts = raw.map(item => {
-                            if (item && typeof item === 'object' && item.text) return item.text;
-                            return String(item);
-                        }).filter(t => t.trim() !== '');
-                        return texts.join('、');
-                    } else if (typeof raw === 'object' && raw !== null && raw.text) {
-                        return raw.text;
-                    }
-                    return String(raw);
-                }
-                else {
-                    return typeof raw === 'object' ? JSON.stringify(raw) : String(raw);
-                }
+                return '';
             }
-
-            function setFieldValue(id, value) {
-                const el = document.getElementById(id);
-                if (el) {
-                    el.innerText = (value === '' || value === null || value === undefined) ? '—' : value;
-                }
+            else if (rule === 'joinText') {
+                if (Array.isArray(raw)) {
+                    const texts = raw.map(item => (item && typeof item === 'object' && item.text) ? item.text : String(item)).filter(t => t.trim());
+                    return texts.join('、');
+                } else if (typeof raw === 'object' && raw !== null && raw.text) return raw.text;
+                return String(raw);
             }
+            else return typeof raw === 'object' ? JSON.stringify(raw) : String(raw);
+        }
 
-            function fillForm(fields) {
-                setFieldValue('field_customer', extractFieldValue(fields, 'fldRZ3f48d', 'text'));
-                setFieldValue('field_date', extractFieldValue(fields, 'fldlqphDO1', 'date'));
-                setFieldValue('field_settle_method', extractFieldValue(fields, 'fldU0bZp9j', 'text'));
-                setFieldValue('field_settle_per_gram', extractFieldValue(fields, 'fldBP8qj8G', 'number'));
-                setFieldValue('field_out_no', extractFieldValue(fields, 'fldBH4bIGR', 'value'));
-                setFieldValue('field_product_name', extractFieldValue(fields, 'fldfwaBoti', 'joinText'));
-                setFieldValue('field_material', extractFieldValue(fields, 'fldXBLcZ1R', 'text'));
-                setFieldValue('field_total_weight', extractFieldValue(fields, 'fldTl9D94f', 'number'));
-                setFieldValue('field_net_gold_weight', extractFieldValue(fields, 'fldskrMb67', 'number'));
-                setFieldValue('field_labor_price', extractFieldValue(fields, 'fldwryId9s', 'number'));
-                setFieldValue('field_actual_extra', extractFieldValue(fields, 'fld4taZPc3', 'number'));
-                setFieldValue('field_offset_weight', extractFieldValue(fields, 'fldskrMb67', 'number'));
-                setFieldValue('field_need_supply', extractFieldValue(fields, 'fldpUwDne6', 'number'));
-                setFieldValue('field_old_exchange_fee', extractFieldValue(fields, 'flduElGPI0', 'number'));
-                setFieldValue('field_total_price', extractFieldValue(fields, 'fld7SS6pKr', 'number'));
+        // 填充主单据
+        function fillForm(fields) {
+            setFieldValue('field_customer', extractFieldValue(fields, 'fldRZ3f48d', 'text'));
+            setFieldValue('field_date', extractFieldValue(fields, 'fldlqphDO1', 'date'));
+            setFieldValue('field_settle_method', extractFieldValue(fields, 'fldU0bZp9j', 'text'));
+            setFieldValue('field_settle_per_gram', extractFieldValue(fields, 'fldBP8qj8G', 'number'));
+            setFieldValue('field_out_no', extractFieldValue(fields, 'fldBH4bIGR', 'value'));
+            setFieldValue('field_product_name', extractFieldValue(fields, 'fldfwaBoti', 'joinText'));
+            setFieldValue('field_material', extractFieldValue(fields, 'fldXBLcZ1R', 'text'));
+            setFieldValue('field_total_weight', extractFieldValue(fields, 'fldTl9D94f', 'number'));
+            setFieldValue('field_net_gold_weight', extractFieldValue(fields, 'fldskrMb67', 'number'));
+            setFieldValue('field_labor_price', extractFieldValue(fields, 'fldwryId9s', 'number'));
+            setFieldValue('field_actual_extra', extractFieldValue(fields, 'fld4taZPc3', 'number'));
+            setFieldValue('field_offset_weight', extractFieldValue(fields, 'fldskrMb67', 'number'));
+            setFieldValue('field_need_supply', extractFieldValue(fields, 'fldpUwDne6', 'number'));
+            setFieldValue('field_old_exchange_fee', extractFieldValue(fields, 'flduElGPI0', 'number'));
+            setFieldValue('field_total_price', extractFieldValue(fields, 'fld7SS6pKr', 'number'));
 
-                // 格式化数值
-                document.querySelectorAll('[id^="field_"]').forEach(el => {
-                    if (el.id.includes('weight') || el.id.includes('price') || el.id.includes('fee') || el.id.includes('total') || el.id.includes('per_gram')) {
-                        const raw = el.innerText;
-                        if (raw && !isNaN(raw) && raw !== '') {
-                            const num = parseFloat(raw);
-                            el.innerText = num.toFixed(2);
-                        }
+            // 数值格式化
+            document.querySelectorAll('[id^="field_"]').forEach(el => {
+                if (el.id.includes('weight') || el.id.includes('price') || el.id.includes('fee') || el.id.includes('total') || el.id.includes('per_gram')) {
+                    const raw = el.innerText;
+                    if (raw && !isNaN(raw) && raw !== '') {
+                        const num = parseFloat(raw);
+                        el.innerText = num.toFixed(2);
                     }
-                });
-            }
-
-            // 弹出选择对话框，加载记录
-            async function selectAndLoad() {
-                hideMessages();
-                try {
-                    if (!window.bitable || !window.bitable.base || !window.bitable.ui) {
-                        throw new Error('飞书SDK未加载');
-                    }
-                    const base = window.bitable.base;
-                    const selection = await base.getSelection();
-                    let tableId = selection?.tableId;
-                    let viewId = selection?.viewId;
-                    if (!tableId) {
-                        const activeTable = await base.getActiveTable();
-                        tableId = activeTable?.id;
-                        viewId = activeTable?.activeViewId;
-                    }
-                    if (!tableId || !viewId) throw new Error('无法获取当前表格/视图');
-
-                    // 弹出记录选择对话框（支持多选，但限定单选）
-                    const selectedIds = await window.bitable.ui.selectRecordIdList(tableId, viewId);
-                    if (!selectedIds || selectedIds.length === 0) {
-                        showInfo('未选择任何记录');
-                        return;
-                    }
-                    const targetId = selectedIds[0];
-                    if (selectedIds.length > 1) {
-                        showInfo(`已选择 ${selectedIds.length} 条记录，将只加载第一条`);
-                    }
-
-                    const table = await base.getActiveTable();
-                    let record = null;
-                    try {
-                        record = await table.getRecordById(targetId);
-                    } catch (err) {
-                        const recordsData = await table.getRecordList();
-                        let recordsArray = [];
-                        if (Array.isArray(recordsData)) recordsArray = recordsData;
-                        else if (recordsData?.recordList) recordsArray = recordsData.recordList;
-                        else if (recordsData?.records) recordsArray = recordsData.records;
-                        record = recordsArray.find(r => {
-                            const id = r.recordId || r.id || r._id || r.record_id;
-                            return String(id) === String(targetId);
-                        });
-                    }
-                    if (!record) throw new Error('未找到对应记录');
-
-                    const fields = record.fields || record;
-                    console.log('选中记录字段：');
-                    console.table(fields);
-                    fillForm(fields);
-                    showInfo('数据加载成功，可点击打印');
-                } catch (err) {
-                    console.error(err);
-                    showError(err.message);
                 }
-            }
-
-            // 打印
-            function printDocument() {
-                const customer = document.getElementById('field_customer').innerText;
-                if (customer === '' || customer === '—') {
-                    showError('请先选择记录并加载数据');
-                    return;
-                }
-                if (window.bitable?.base?.print) {
-                    window.bitable.base.print({ fail: () => window.print() });
-                } else {
-                    window.print();
-                }
-            }
-
-            // 绑定按钮事件
-            document.addEventListener('DOMContentLoaded', () => {
-                const selectBtn = document.getElementById('selectBtn');
-                const printBtn = document.getElementById('printBtn');
-                if (selectBtn) selectBtn.onclick = selectAndLoad;
-                if (printBtn) printBtn.onclick = printDocument;
-
-                // 可选：页面打开时自动弹出选择（方便用户）
-                setTimeout(() => {
-                    selectAndLoad();
-                }, 500);
             });
-        })();
+        }
+        function setFieldValue(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.innerText = (value === '' || value === null || value === undefined) ? '—' : value;
+        }
+
+        // 从原始 fields 提取用于表格展示的关键字段
+        function buildDisplayRecord(recordId, fields) {
+            const customer = extractFieldValue(fields, 'fldRZ3f48d', 'text');
+            const outNo = extractFieldValue(fields, 'fldBH4bIGR', 'value');
+            const product = extractFieldValue(fields, 'fldfwaBoti', 'joinText');
+            const material = extractFieldValue(fields, 'fldXBLcZ1R', 'text');
+            const dateRaw = extractFieldValue(fields, 'fldlqphDO1', 'date');
+            const totalWeight = extractFieldValue(fields, 'fldTl9D94f', 'number');
+            return {
+                recordId,
+                customer: customer || '—',
+                outNo: outNo || '—',
+                product: product || '—',
+                material: material || '—',
+                date: dateRaw || '—',
+                totalWeight: (totalWeight !== '' && !isNaN(totalWeight)) ? parseFloat(totalWeight).toFixed(2) : '—',
+                rawFields: fields
+            };
+        }
+
+        // 渲染表格（根据筛选）
+        function renderRecordsTable() {
+            const tbody = document.getElementById('recordsTbody');
+            if (!allRecords.length) {
+                tbody.innerHTML = '<tr><td colspan="7" class="no-data">暂无记录，请确保表格有数据</td></tr>';
+                return;
+            }
+            const keyword = currentFilter.trim().toLowerCase();
+            const filtered = keyword === '' ? allRecords : allRecords.filter(rec => {
+                return rec.customer.toLowerCase().includes(keyword) ||
+                       rec.outNo.toLowerCase().includes(keyword) ||
+                       rec.product.toLowerCase().includes(keyword) ||
+                       rec.material.toLowerCase().includes(keyword) ||
+                       rec.date.includes(keyword);
+            });
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="no-data">未找到匹配的记录</td></tr>';
+                return;
+            }
+            let html = '';
+            filtered.forEach(rec => {
+                html += `<tr onclick="selectRecord('${rec.recordId}')">
+                            <td>${escapeHtml(rec.customer)}</td>
+                            <td>${escapeHtml(rec.outNo)}</td>
+                            <td>${escapeHtml(rec.product)}</td>
+                            <td>${escapeHtml(rec.material)}</td>
+                            <td>${escapeHtml(rec.date)}</td>
+                            <td>${rec.totalWeight}</td>
+                            <td style="text-align:center">📄 选择</td>
+                         </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+        function escapeHtml(str) { return String(str).replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
+
+        // 筛选事件
+        window.filterRecords = function() {
+            currentFilter = document.getElementById('filterKeyword').value;
+            renderRecordsTable();
+        };
+
+        // 选择某条记录
+        window.selectRecord = async function(recordId) {
+            const record = allRecords.find(r => r.recordId === recordId);
+            if (!record) return;
+            // 填充主表单
+            fillForm(record.rawFields);
+            // 在控制台打印详细信息
+            console.log('✅ 已加载记录:', record.recordId);
+            console.table(record.rawFields);
+            // 关闭模态框
+            closeModal();
+            hideError();
+        };
+
+        // 打开模态框并加载数据
+        window.openRecordSelector = async function() {
+            hideError();
+            const modal = document.getElementById('recordModal');
+            modal.style.display = 'block';
+            // 如果尚未加载过记录列表，则从飞书拉取
+            if (allRecords.length === 0) {
+                await fetchAllRecords();
+            }
+            renderRecordsTable();
+        };
+        function closeModal() {
+            document.getElementById('recordModal').style.display = 'none';
+        }
+
+        // 从飞书获取所有记录
+        async function fetchAllRecords() {
+            try {
+                if (!window.bitable || !window.bitable.base) throw new Error('飞书SDK未加载');
+                const base = window.bitable.base;
+                const selection = await base.getSelection();
+                let tableId = selection?.tableId;
+                if (!tableId) {
+                    const activeTable = await base.getActiveTable();
+                    tableId = activeTable?.id;
+                }
+                if (!tableId) throw new Error('无法获取当前表格');
+                const table = await base.getActiveTable();
+                if (!table) throw new Error('表格实例获取失败');
+                const recordsData = await table.getRecordList();
+                let recordsArray = [];
+                if (Array.isArray(recordsData)) recordsArray = recordsData;
+                else if (recordsData?.recordList) recordsArray = recordsData.recordList;
+                else if (recordsData?.records) recordsArray = recordsData.records;
+                if (!recordsArray.length) throw new Error('表格中没有记录');
+                // 转换格式
+                allRecords = [];
+                for (const rec of recordsArray) {
+                    const recordId = rec.recordId || rec.id || rec._id;
+                    const fields = rec.fields || rec;
+                    if (recordId && fields) {
+                        const display = buildDisplayRecord(recordId, fields);
+                        allRecords.push(display);
+                    }
+                }
+                console.log(`成功加载 ${allRecords.length} 条记录`);
+            } catch (err) {
+                console.error(err);
+                showError('获取记录失败：' + err.message);
+                allRecords = [];
+                renderRecordsTable();
+            }
+        }
+
+        // 打印
+        window.printDocument = function() {
+            const customer = document.getElementById('field_customer').innerText;
+            if (customer === '' || customer === '—') {
+                showError('请先选择一条记录再打印');
+                return;
+            }
+            if (window.bitable?.base?.print) {
+                window.bitable.base.print({ fail: () => window.print() });
+            } else {
+                window.print();
+            }
+        };
+
+        // 点击模态框外部关闭
+        window.onclick = function(event) {
+            const modal = document.getElementById('recordModal');
+            if (event.target === modal) closeModal();
+        };
+
+        window.onload = function() {
+            // 初始化所有占位符
+            document.querySelectorAll('.field-value').forEach(el => el.innerText = '—');
+        };
     </script>
 </body>
 </html>
