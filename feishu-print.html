@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>金时出库单 - 自动读取勾选记录</title>
+    <title>金时出库单</title>
     <script src="lark-sdk.umd.js" defer></script>
     <style>
         * {
@@ -58,8 +58,6 @@
         .btn-primary:hover { background: #0066cc; }
         .btn-success { background: #2ecc71; }
         .btn-success:hover { background: #27ae60; }
-        .btn-refresh { background: #f39c12; }
-        .btn-refresh:hover { background: #e67e22; }
         .error-tip {
             background: #ffebee;
             border-left: 4px solid #d32f2f;
@@ -161,7 +159,7 @@
 </head>
 <body>
     <div class="btn-group no-print">
-        <button class="btn btn-refresh" id="refreshBtn">🔄 刷新</button>
+        <button class="btn btn-primary" id="selectBtn">📋 选择记录</button>
         <button class="btn btn-success" id="printBtn">🖨️ 打印</button>
     </div>
 
@@ -202,7 +200,6 @@
 
     <script>
         (function() {
-            // 显示短暂提示
             function showInfo(msg) {
                 const infoDiv = document.getElementById('infoTip');
                 infoDiv.textContent = msg;
@@ -216,10 +213,8 @@
                 console.error(msg);
             }
             function hideMessages() {
-                const infoDiv = document.getElementById('infoTip');
-                const errDiv = document.getElementById('errorTip');
-                if(infoDiv) infoDiv.style.display = 'none';
-                if(errDiv) errDiv.style.display = 'none';
+                document.getElementById('infoTip').style.display = 'none';
+                document.getElementById('errorTip').style.display = 'none';
             }
 
             // 字段提取逻辑
@@ -291,14 +286,11 @@
             }
 
             function fillForm(fields) {
-                // 头部
                 setFieldValue('field_customer', extractFieldValue(fields, 'fldRZ3f48d', 'text'));
                 setFieldValue('field_date', extractFieldValue(fields, 'fldlqphDO1', 'date'));
                 setFieldValue('field_settle_method', extractFieldValue(fields, 'fldU0bZp9j', 'text'));
                 setFieldValue('field_settle_per_gram', extractFieldValue(fields, 'fldBP8qj8G', 'number'));
                 setFieldValue('field_out_no', extractFieldValue(fields, 'fldBH4bIGR', 'value'));
-
-                // 明细
                 setFieldValue('field_product_name', extractFieldValue(fields, 'fldfwaBoti', 'joinText'));
                 setFieldValue('field_material', extractFieldValue(fields, 'fldXBLcZ1R', 'text'));
                 setFieldValue('field_total_weight', extractFieldValue(fields, 'fldTl9D94f', 'number'));
@@ -310,7 +302,7 @@
                 setFieldValue('field_old_exchange_fee', extractFieldValue(fields, 'flduElGPI0', 'number'));
                 setFieldValue('field_total_price', extractFieldValue(fields, 'fld7SS6pKr', 'number'));
 
-                // 数值格式化
+                // 格式化数值
                 document.querySelectorAll('[id^="field_"]').forEach(el => {
                     if (el.id.includes('weight') || el.id.includes('price') || el.id.includes('fee') || el.id.includes('total') || el.id.includes('per_gram')) {
                         const raw = el.innerText;
@@ -322,40 +314,40 @@
                 });
             }
 
-            // 核心：从当前勾选记录中获取数据
-            async function loadFromSelectedRecords() {
+            // 弹出选择对话框，加载记录
+            async function selectAndLoad() {
                 hideMessages();
                 try {
-                    // 检查SDK
-                    if (!window.bitable || !window.bitable.base) {
-                        throw new Error('飞书SDK未加载或不在飞书多维表格环境中');
+                    if (!window.bitable || !window.bitable.base || !window.bitable.ui) {
+                        throw new Error('飞书SDK未加载');
                     }
                     const base = window.bitable.base;
-                    
-                    // 获取当前视图中选中的记录ID列表（用户手动勾选的行）
                     const selection = await base.getSelection();
-                    console.log('getSelection 结果:', selection);
-                    let selectedIds = selection?.recordIds || [];
+                    let tableId = selection?.tableId;
+                    let viewId = selection?.viewId;
+                    if (!tableId) {
+                        const activeTable = await base.getActiveTable();
+                        tableId = activeTable?.id;
+                        viewId = activeTable?.activeViewId;
+                    }
+                    if (!tableId || !viewId) throw new Error('无法获取当前表格/视图');
+
+                    // 弹出记录选择对话框（支持多选，但限定单选）
+                    const selectedIds = await window.bitable.ui.selectRecordIdList(tableId, viewId);
                     if (!selectedIds || selectedIds.length === 0) {
-                        showInfo('未勾选任何记录，请在表格视图中勾选一行记录后点击“刷新”');
+                        showInfo('未选择任何记录');
                         return;
                     }
-                    if (selectedIds.length > 1) {
-                        showInfo(`您勾选了 ${selectedIds.length} 条记录，模板仅支持显示第一条，将使用第一条数据。`);
-                        selectedIds = [selectedIds[0]];
-                    }
                     const targetId = selectedIds[0];
-                    const table = await base.getActiveTable();
-                    if (!table) throw new Error('无法获取当前表格实例');
+                    if (selectedIds.length > 1) {
+                        showInfo(`已选择 ${selectedIds.length} 条记录，将只加载第一条`);
+                    }
 
+                    const table = await base.getActiveTable();
                     let record = null;
-                    // 方法1: getRecordById
                     try {
                         record = await table.getRecordById(targetId);
-                        console.log('通过 getRecordById 获取记录成功');
                     } catch (err) {
-                        console.warn('getRecordById 失败，尝试从 recordList 筛选', err);
-                        // 方法2: 获取所有记录后筛选
                         const recordsData = await table.getRecordList();
                         let recordsArray = [];
                         if (Array.isArray(recordsData)) recordsArray = recordsData;
@@ -366,27 +358,24 @@
                             return String(id) === String(targetId);
                         });
                     }
-                    if (!record) throw new Error(`未找到 ID 为 ${targetId} 的记录`);
+                    if (!record) throw new Error('未找到对应记录');
 
                     const fields = record.fields || record;
-                    console.log('自动读取勾选记录字段详情:');
+                    console.log('选中记录字段：');
                     console.table(fields);
                     fillForm(fields);
                     showInfo('数据加载成功，可点击打印');
                 } catch (err) {
-                    console.error('刷新失败:', err);
+                    console.error(err);
                     showError(err.message);
                 }
             }
 
-            // 将刷新函数挂载到 window，并确保按钮事件绑定
-            window.refreshFromSelection = loadFromSelectedRecords;
-            
-            // 打印函数
-            window.printDocument = function() {
+            // 打印
+            function printDocument() {
                 const customer = document.getElementById('field_customer').innerText;
                 if (customer === '' || customer === '—') {
-                    showError('请先勾选记录并点击刷新加载数据后再打印');
+                    showError('请先选择记录并加载数据');
                     return;
                 }
                 if (window.bitable?.base?.print) {
@@ -394,20 +383,19 @@
                 } else {
                     window.print();
                 }
-            };
+            }
 
-            // 页面加载完成后，绑定按钮事件（防止动态元素未加载）
+            // 绑定按钮事件
             document.addEventListener('DOMContentLoaded', () => {
-                const refreshBtn = document.getElementById('refreshBtn');
+                const selectBtn = document.getElementById('selectBtn');
                 const printBtn = document.getElementById('printBtn');
-                if (refreshBtn) {
-                    refreshBtn.onclick = () => { loadFromSelectedRecords(); };
-                }
-                if (printBtn) {
-                    printBtn.onclick = () => { window.printDocument(); };
-                }
-                // 初始加载一次
-                loadFromSelectedRecords();
+                if (selectBtn) selectBtn.onclick = selectAndLoad;
+                if (printBtn) printBtn.onclick = printDocument;
+
+                // 可选：页面打开时自动弹出选择（方便用户）
+                setTimeout(() => {
+                    selectAndLoad();
+                }, 500);
             });
         })();
     </script>
