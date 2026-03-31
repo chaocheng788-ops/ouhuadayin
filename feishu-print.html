@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>金时出库单 (支持记录筛选)</title>
-    <!-- 飞书多维表格 SDK (UMD) -->
+    <title>金时出库单 (多字段筛选版)</title>
     <script src="lark-sdk.umd.js" defer></script>
     <style>
         * {
@@ -24,22 +23,12 @@
             color: #000;
         }
         @media print {
-            .no-print {
-                display: none !important;
-            }
-            body {
-                padding: 5mm 8mm;
-            }
-            @page {
-                size: A4;
-                margin: 10mm 12mm;
-            }
-            .field-value {
-                border-bottom: 1px solid #000 !important;
-            }
+            .no-print { display: none !important; }
+            body { padding: 5mm 8mm; }
+            @page { size: A4; margin: 10mm 12mm; }
+            .field-value { border-bottom: 1px solid #000 !important; }
         }
 
-        /* 按钮组 */
         .btn-group {
             position: fixed;
             top: 15px;
@@ -69,7 +58,6 @@
             color: #b71c1c;
         }
 
-        /* 单据样式 */
         .invoice-title {
             text-align: center;
             font-size: 28px;
@@ -88,19 +76,14 @@
             margin-bottom: 24px;
             background: #fefefe;
         }
-        .header-item {
-            display: flex;
-            align-items: baseline;
-        }
+        .header-item { display: flex; align-items: baseline; }
         .header-label {
             font-weight: 600;
             width: 75px;
             flex-shrink: 0;
             color: #2c3e50;
         }
-        .header-label::after {
-            content: "：";
-        }
+        .header-label::after { content: "："; }
         .field-value {
             flex: 1;
             border-bottom: 1px dashed #666;
@@ -112,10 +95,7 @@
             margin: 24px 0 16px;
             border: 1px solid #333;
         }
-        .detail-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+        .detail-table { width: 100%; border-collapse: collapse; }
         .detail-table td {
             border: 1px solid #333;
             padding: 10px 8px;
@@ -125,21 +105,15 @@
             font-weight: 600;
             background-color: #f3f3f3;
             width: 15%;
-            white-space: nowrap;
             text-align: center;
         }
-        .value-cell {
-            width: 35%;
-            text-align: left;
-            padding-left: 12px;
-        }
+        .value-cell { width: 35%; text-align: left; padding-left: 12px; }
         .footer-info {
             display: flex;
             justify-content: space-between;
             margin-top: 30px;
             border-top: 1px dashed #333;
             padding-top: 12px;
-            font-size: 14px;
         }
         .signature-left, .signature-right {
             border-bottom: 1px solid #333;
@@ -148,7 +122,7 @@
             text-align: center;
         }
 
-        /* ---------- 自定义模态框样式 ---------- */
+        /* 模态框样式 */
         .modal {
             display: none;
             position: fixed;
@@ -157,18 +131,17 @@
             top: 0;
             width: 100%;
             height: 100%;
-            overflow: auto;
             background-color: rgba(0,0,0,0.5);
             backdrop-filter: blur(2px);
         }
         .modal-content {
             background-color: #fff;
-            margin: 5% auto;
+            margin: 3% auto;
             padding: 20px;
             border-radius: 12px;
-            width: 80%;
-            max-width: 1100px;
-            max-height: 80%;
+            width: 85%;
+            max-width: 1300px;
+            max-height: 85%;
             overflow-y: auto;
             box-shadow: 0 10px 25px rgba(0,0,0,0.2);
         }
@@ -180,27 +153,55 @@
             padding-bottom: 12px;
             margin-bottom: 16px;
         }
-        .modal-header h3 {
-            font-size: 20px;
-            color: #007fff;
+        .modal-header h3 { font-size: 20px; color: #007fff; }
+        .close { font-size: 28px; cursor: pointer; color: #aaa; }
+        .close:hover { color: black; }
+
+        /* 多条件筛选行 */
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            background: #f8f9fc;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            align-items: flex-end;
         }
-        .close {
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-            color: #aaa;
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 150px;
         }
-        .close:hover {
-            color: black;
+        .filter-group label {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #2c3e50;
         }
-        .filter-input {
-            width: 100%;
-            padding: 10px 12px;
-            margin-bottom: 16px;
+        .filter-group input {
+            padding: 6px 10px;
             border: 1px solid #ccc;
             border-radius: 6px;
-            font-size: 14px;
+            font-size: 13px;
+            width: 160px;
         }
+        .filter-group input[type="date"] { width: 140px; }
+        .filter-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .filter-actions button {
+            padding: 6px 12px;
+            background: #007fff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .filter-actions button.reset-btn { background: #6c757d; }
+
         .records-table {
             width: 100%;
             border-collapse: collapse;
@@ -211,26 +212,10 @@
             padding: 8px 10px;
             text-align: left;
         }
-        .records-table th {
-            background: #f2f2f2;
-            position: sticky;
-            top: 0;
-        }
-        .records-table tr {
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .records-table tr:hover {
-            background: #e6f2ff;
-        }
-        .selected-row {
-            background: #d9eaff;
-        }
-        .no-data {
-            text-align: center;
-            padding: 30px;
-            color: #999;
-        }
+        .records-table th { background: #f2f2f2; position: sticky; top: 0; }
+        .records-table tr { cursor: pointer; transition: background 0.2s; }
+        .records-table tr:hover { background: #e6f2ff; }
+        .no-data { text-align: center; padding: 30px; color: #999; }
     </style>
 </head>
 <body>
@@ -240,7 +225,7 @@
     </div>
     <div id="errorTip" class="error-tip no-print" style="display: none;"></div>
 
-    <!-- 单据主体 -->
+    <!-- 出库单主体 -->
     <div class="invoice-container">
         <div class="invoice-title">金时出库单</div>
         <div class="header-grid">
@@ -265,45 +250,48 @@
         </div>
     </div>
 
-    <!-- 自定义筛选模态框 -->
+    <!-- 模态框：支持多字段独立筛选 -->
     <div id="recordModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>📋 选择出库记录（支持筛选）</h3>
+                <h3>📋 选择出库记录（支持多条件联动筛选）</h3>
                 <span class="close" onclick="closeModal()">&times;</span>
             </div>
-            <input type="text" id="filterKeyword" class="filter-input" placeholder="🔍 输入关键字筛选（客户/单号/产品/材质...）" oninput="filterRecords()">
+            <div class="filter-row">
+                <div class="filter-group"><label>客户</label><input type="text" id="filterCustomer" placeholder="模糊匹配" oninput="applyFilters()"></div>
+                <div class="filter-group"><label>出库单号</label><input type="text" id="filterOutNo" placeholder="模糊匹配" oninput="applyFilters()"></div>
+                <div class="filter-group"><label>产品名称</label><input type="text" id="filterProduct" placeholder="模糊匹配" oninput="applyFilters()"></div>
+                <div class="filter-group"><label>材质</label><input type="text" id="filterMaterial" placeholder="模糊匹配" oninput="applyFilters()"></div>
+                <div class="filter-group"><label>日期</label><input type="date" id="filterDate" onchange="applyFilters()"></div>
+                <div class="filter-actions">
+                    <button class="reset-btn" onclick="resetFilters()">重置筛选</button>
+                </div>
+            </div>
             <div style="overflow-x: auto;">
                 <table class="records-table" id="recordsTable">
-                    <thead>
-                        <tr><th>客户</th><th>出库单号</th><th>产品名称</th><th>材质</th><th>日期</th><th>总重</th><th>操作</th></tr>
-                    </thead>
-                    <tbody id="recordsTbody">
-                        <tr><td colspan="7" class="no-data">加载中...</td></tr>
-                    </tbody>
+                    <thead><tr><th>客户</th><th>出库单号</th><th>产品名称</th><th>材质</th><th>日期</th><th>总重</th><th>操作</th></tr></thead>
+                    <tbody id="recordsTbody"><tr><td colspan="7" class="no-data">加载中...</td></tr></tbody>
                 </table>
             </div>
-            <div style="margin-top: 12px; font-size: 12px; color: #666;">💡 点击任意行即可加载该单据，支持实时筛选</div>
+            <div style="margin-top: 12px; font-size: 12px; color: #666;">💡 点击任意行加载该单据，所有筛选条件实时联动</div>
         </div>
     </div>
 
     <script>
-        // 全局存储所有记录和字段映射辅助函数
-        let allRecords = [];        // 存储 { recordId, displayFields, rawFields }
-        let currentFilter = '';
+        // ---------- 全局变量 ----------
+        let allRecords = [];        // 存储 { recordId, customer, outNo, product, material, date, totalWeight, rawFields }
+        let filteredRecords = [];
 
         // ---------- 辅助函数 ----------
-        function showError(msg) {
-            const errTip = document.getElementById('errorTip');
-            errTip.textContent = `❌ 错误：${msg}`;
-            errTip.style.display = 'block';
+        function showError(msg) { 
+            const err = document.getElementById('errorTip');
+            err.textContent = `❌ ${msg}`;
+            err.style.display = 'block';
             console.error(msg);
         }
-        function hideError() {
-            document.getElementById('errorTip').style.display = 'none';
-        }
+        function hideError() { document.getElementById('errorTip').style.display = 'none'; }
 
-        // 提取字段值（与之前逻辑一致）
+        // 字段提取 (同之前逻辑)
         function extractFieldValue(fields, fieldId, rule) {
             if (!fields || !fieldId) return '';
             const raw = fields[fieldId];
@@ -312,124 +300,112 @@
                 if (Array.isArray(raw) && raw.length > 0) {
                     const first = raw[0];
                     return (first && typeof first === 'object' && first.text) ? first.text : String(first);
-                } else if (typeof raw === 'object' && raw !== null) {
-                    return raw.text !== undefined ? raw.text : String(raw);
-                }
+                } else if (typeof raw === 'object' && raw !== null) return raw.text !== undefined ? raw.text : String(raw);
                 return String(raw);
-            }
-            else if (rule === 'value') {
+            } else if (rule === 'value') {
                 if (Array.isArray(raw) && raw.length > 0) {
                     const first = raw[0];
                     return (first && typeof first === 'object' && first.value !== undefined) ? first.value : String(first);
-                } else if (typeof raw === 'object' && raw !== null) {
-                    return raw.value !== undefined ? raw.value : String(raw);
-                }
+                } else if (typeof raw === 'object' && raw !== null) return raw.value !== undefined ? raw.value : String(raw);
                 return String(raw);
-            }
-            else if (rule === 'number') {
+            } else if (rule === 'number') {
                 const num = parseFloat(raw);
                 return isNaN(num) ? '' : num;
-            }
-            else if (rule === 'date') {
+            } else if (rule === 'date') {
                 let ts = raw;
                 if (typeof ts === 'number' && ts > 1000000000000) { /* 毫秒 */ }
                 else if (typeof ts === 'number' && ts < 10000000000) ts = ts * 1000;
-                else if (typeof ts === 'string' && /^\d+$/.test(ts)) {
-                    ts = parseInt(ts);
-                    if (ts < 10000000000) ts = ts * 1000;
-                }
+                else if (typeof ts === 'string' && /^\d+$/.test(ts)) { ts = parseInt(ts); if (ts < 10000000000) ts = ts * 1000; }
                 const date = new Date(ts);
                 if (!isNaN(date.getTime())) {
                     const y = date.getFullYear(), m = (date.getMonth()+1).toString().padStart(2,'0'), d = date.getDate().toString().padStart(2,'0');
                     return `${y}-${m}-${d}`;
                 }
                 return '';
-            }
-            else if (rule === 'joinText') {
+            } else if (rule === 'joinText') {
                 if (Array.isArray(raw)) {
                     const texts = raw.map(item => (item && typeof item === 'object' && item.text) ? item.text : String(item)).filter(t => t.trim());
                     return texts.join('、');
                 } else if (typeof raw === 'object' && raw !== null && raw.text) return raw.text;
                 return String(raw);
-            }
-            else return typeof raw === 'object' ? JSON.stringify(raw) : String(raw);
+            } else return typeof raw === 'object' ? JSON.stringify(raw) : String(raw);
         }
 
         // 填充主单据
         function fillForm(fields) {
-            setFieldValue('field_customer', extractFieldValue(fields, 'fldRZ3f48d', 'text'));
-            setFieldValue('field_date', extractFieldValue(fields, 'fldlqphDO1', 'date'));
-            setFieldValue('field_settle_method', extractFieldValue(fields, 'fldU0bZp9j', 'text'));
-            setFieldValue('field_settle_per_gram', extractFieldValue(fields, 'fldBP8qj8G', 'number'));
-            setFieldValue('field_out_no', extractFieldValue(fields, 'fldBH4bIGR', 'value'));
-            setFieldValue('field_product_name', extractFieldValue(fields, 'fldfwaBoti', 'joinText'));
-            setFieldValue('field_material', extractFieldValue(fields, 'fldXBLcZ1R', 'text'));
-            setFieldValue('field_total_weight', extractFieldValue(fields, 'fldTl9D94f', 'number'));
-            setFieldValue('field_net_gold_weight', extractFieldValue(fields, 'fldskrMb67', 'number'));
-            setFieldValue('field_labor_price', extractFieldValue(fields, 'fldwryId9s', 'number'));
-            setFieldValue('field_actual_extra', extractFieldValue(fields, 'fld4taZPc3', 'number'));
-            setFieldValue('field_offset_weight', extractFieldValue(fields, 'fldskrMb67', 'number'));
-            setFieldValue('field_need_supply', extractFieldValue(fields, 'fldpUwDne6', 'number'));
-            setFieldValue('field_old_exchange_fee', extractFieldValue(fields, 'flduElGPI0', 'number'));
-            setFieldValue('field_total_price', extractFieldValue(fields, 'fld7SS6pKr', 'number'));
-
+            const set = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = (val === '' || val == null) ? '—' : val; };
+            set('field_customer', extractFieldValue(fields, 'fldRZ3f48d', 'text'));
+            set('field_date', extractFieldValue(fields, 'fldlqphDO1', 'date'));
+            set('field_settle_method', extractFieldValue(fields, 'fldU0bZp9j', 'text'));
+            set('field_settle_per_gram', extractFieldValue(fields, 'fldBP8qj8G', 'number'));
+            set('field_out_no', extractFieldValue(fields, 'fldBH4bIGR', 'value'));
+            set('field_product_name', extractFieldValue(fields, 'fldfwaBoti', 'joinText'));
+            set('field_material', extractFieldValue(fields, 'fldXBLcZ1R', 'text'));
+            set('field_total_weight', extractFieldValue(fields, 'fldTl9D94f', 'number'));
+            set('field_net_gold_weight', extractFieldValue(fields, 'fldskrMb67', 'number'));
+            set('field_labor_price', extractFieldValue(fields, 'fldwryId9s', 'number'));
+            set('field_actual_extra', extractFieldValue(fields, 'fld4taZPc3', 'number'));
+            set('field_offset_weight', extractFieldValue(fields, 'fldskrMb67', 'number'));
+            set('field_need_supply', extractFieldValue(fields, 'fldpUwDne6', 'number'));
+            set('field_old_exchange_fee', extractFieldValue(fields, 'flduElGPI0', 'number'));
+            set('field_total_price', extractFieldValue(fields, 'fld7SS6pKr', 'number'));
             // 数值格式化
             document.querySelectorAll('[id^="field_"]').forEach(el => {
                 if (el.id.includes('weight') || el.id.includes('price') || el.id.includes('fee') || el.id.includes('total') || el.id.includes('per_gram')) {
-                    const raw = el.innerText;
-                    if (raw && !isNaN(raw) && raw !== '') {
-                        const num = parseFloat(raw);
-                        el.innerText = num.toFixed(2);
-                    }
+                    let txt = el.innerText;
+                    if (txt && !isNaN(txt) && txt !== '—') { let num = parseFloat(txt); el.innerText = num.toFixed(2); }
                 }
             });
         }
-        function setFieldValue(id, value) {
-            const el = document.getElementById(id);
-            if (el) el.innerText = (value === '' || value === null || value === undefined) ? '—' : value;
-        }
 
-        // 从原始 fields 提取用于表格展示的关键字段
+        // 构建用于展示的记录对象
         function buildDisplayRecord(recordId, fields) {
-            const customer = extractFieldValue(fields, 'fldRZ3f48d', 'text');
-            const outNo = extractFieldValue(fields, 'fldBH4bIGR', 'value');
-            const product = extractFieldValue(fields, 'fldfwaBoti', 'joinText');
-            const material = extractFieldValue(fields, 'fldXBLcZ1R', 'text');
-            const dateRaw = extractFieldValue(fields, 'fldlqphDO1', 'date');
-            const totalWeight = extractFieldValue(fields, 'fldTl9D94f', 'number');
-            return {
-                recordId,
-                customer: customer || '—',
-                outNo: outNo || '—',
-                product: product || '—',
-                material: material || '—',
-                date: dateRaw || '—',
-                totalWeight: (totalWeight !== '' && !isNaN(totalWeight)) ? parseFloat(totalWeight).toFixed(2) : '—',
-                rawFields: fields
-            };
+            const customer = extractFieldValue(fields, 'fldRZ3f48d', 'text') || '—';
+            const outNo = extractFieldValue(fields, 'fldBH4bIGR', 'value') || '—';
+            const product = extractFieldValue(fields, 'fldfwaBoti', 'joinText') || '—';
+            const material = extractFieldValue(fields, 'fldXBLcZ1R', 'text') || '—';
+            const dateStr = extractFieldValue(fields, 'fldlqphDO1', 'date') || '—';
+            let totalWeight = extractFieldValue(fields, 'fldTl9D94f', 'number');
+            totalWeight = (totalWeight !== '' && !isNaN(totalWeight)) ? parseFloat(totalWeight).toFixed(2) : '—';
+            return { recordId, customer, outNo, product, material, date: dateStr, totalWeight, rawFields: fields };
         }
 
-        // 渲染表格（根据筛选）
+        // 筛选核心：联动所有条件
+        function applyFilters() {
+            const filterCustomer = document.getElementById('filterCustomer').value.trim().toLowerCase();
+            const filterOutNo = document.getElementById('filterOutNo').value.trim().toLowerCase();
+            const filterProduct = document.getElementById('filterProduct').value.trim().toLowerCase();
+            const filterMaterial = document.getElementById('filterMaterial').value.trim().toLowerCase();
+            const filterDate = document.getElementById('filterDate').value;  // YYYY-MM-DD
+
+            filteredRecords = allRecords.filter(rec => {
+                if (filterCustomer && !rec.customer.toLowerCase().includes(filterCustomer)) return false;
+                if (filterOutNo && !rec.outNo.toLowerCase().includes(filterOutNo)) return false;
+                if (filterProduct && !rec.product.toLowerCase().includes(filterProduct)) return false;
+                if (filterMaterial && !rec.material.toLowerCase().includes(filterMaterial)) return false;
+                if (filterDate && rec.date !== filterDate) return false;
+                return true;
+            });
+            renderRecordsTable();
+        }
+
+        function resetFilters() {
+            document.getElementById('filterCustomer').value = '';
+            document.getElementById('filterOutNo').value = '';
+            document.getElementById('filterProduct').value = '';
+            document.getElementById('filterMaterial').value = '';
+            document.getElementById('filterDate').value = '';
+            applyFilters();
+        }
+
         function renderRecordsTable() {
             const tbody = document.getElementById('recordsTbody');
-            if (!allRecords.length) {
-                tbody.innerHTML = '<tr><td colspan="7" class="no-data">暂无记录，请确保表格有数据</td></tr>';
-                return;
-            }
-            const keyword = currentFilter.trim().toLowerCase();
-            const filtered = keyword === '' ? allRecords : allRecords.filter(rec => {
-                return rec.customer.toLowerCase().includes(keyword) ||
-                       rec.outNo.toLowerCase().includes(keyword) ||
-                       rec.product.toLowerCase().includes(keyword) ||
-                       rec.material.toLowerCase().includes(keyword) ||
-                       rec.date.includes(keyword);
-            });
-            if (filtered.length === 0) {
+            if (!filteredRecords.length) {
                 tbody.innerHTML = '<tr><td colspan="7" class="no-data">未找到匹配的记录</td></tr>';
                 return;
             }
             let html = '';
-            filtered.forEach(rec => {
+            for (let rec of filteredRecords) {
                 html += `<tr onclick="selectRecord('${rec.recordId}')">
                             <td>${escapeHtml(rec.customer)}</td>
                             <td>${escapeHtml(rec.outNo)}</td>
@@ -439,45 +415,33 @@
                             <td>${rec.totalWeight}</td>
                             <td style="text-align:center">📄 选择</td>
                          </tr>`;
-            });
+            }
             tbody.innerHTML = html;
         }
         function escapeHtml(str) { return String(str).replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
 
-        // 筛选事件
-        window.filterRecords = function() {
-            currentFilter = document.getElementById('filterKeyword').value;
-            renderRecordsTable();
-        };
-
-        // 选择某条记录
+        // 选择记录
         window.selectRecord = async function(recordId) {
             const record = allRecords.find(r => r.recordId === recordId);
             if (!record) return;
-            // 填充主表单
             fillForm(record.rawFields);
-            // 在控制台打印详细信息
             console.log('✅ 已加载记录:', record.recordId);
             console.table(record.rawFields);
-            // 关闭模态框
             closeModal();
             hideError();
         };
 
-        // 打开模态框并加载数据
+        // 打开模态框，拉取数据
         window.openRecordSelector = async function() {
             hideError();
             const modal = document.getElementById('recordModal');
             modal.style.display = 'block';
-            // 如果尚未加载过记录列表，则从飞书拉取
             if (allRecords.length === 0) {
                 await fetchAllRecords();
             }
-            renderRecordsTable();
+            applyFilters(); // 渲染表格
         };
-        function closeModal() {
-            document.getElementById('recordModal').style.display = 'none';
-        }
+        function closeModal() { document.getElementById('recordModal').style.display = 'none'; }
 
         // 从飞书获取所有记录
         async function fetchAllRecords() {
@@ -492,21 +456,18 @@
                 }
                 if (!tableId) throw new Error('无法获取当前表格');
                 const table = await base.getActiveTable();
-                if (!table) throw new Error('表格实例获取失败');
                 const recordsData = await table.getRecordList();
                 let recordsArray = [];
                 if (Array.isArray(recordsData)) recordsArray = recordsData;
                 else if (recordsData?.recordList) recordsArray = recordsData.recordList;
                 else if (recordsData?.records) recordsArray = recordsData.records;
                 if (!recordsArray.length) throw new Error('表格中没有记录');
-                // 转换格式
                 allRecords = [];
                 for (const rec of recordsArray) {
                     const recordId = rec.recordId || rec.id || rec._id;
                     const fields = rec.fields || rec;
                     if (recordId && fields) {
-                        const display = buildDisplayRecord(recordId, fields);
-                        allRecords.push(display);
+                        allRecords.push(buildDisplayRecord(recordId, fields));
                     }
                 }
                 console.log(`成功加载 ${allRecords.length} 条记录`);
@@ -537,9 +498,7 @@
             const modal = document.getElementById('recordModal');
             if (event.target === modal) closeModal();
         };
-
         window.onload = function() {
-            // 初始化所有占位符
             document.querySelectorAll('.field-value').forEach(el => el.innerText = '—');
         };
     </script>
