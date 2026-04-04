@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>金时出库单 (结构优化版)</title>
+    <title>金时出库单 (新版布局)</title>
     <script src="lark-sdk.umd.js" defer></script>
     <style>
         * {
@@ -68,24 +68,29 @@
             padding-bottom: 8px;
         }
 
-        /* 头部网格：5列 */
+        /* 顶部信息区：三列两行网格 */
         .header-grid {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 10px 15px;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px 20px;
             border: 1px solid #333;
             padding: 12px 15px;
             margin-bottom: 24px;
             background: #fefefe;
         }
-        .header-item { display: flex; align-items: baseline; }
+        .header-item {
+            display: flex;
+            align-items: baseline;
+        }
         .header-label {
             font-weight: 600;
-            width: 75px;
+            width: 70px;
             flex-shrink: 0;
             color: #2c3e50;
         }
-        .header-label::after { content: "："; }
+        .header-label::after {
+            content: "：";
+        }
         .field-value {
             flex: 1;
             border-bottom: 1px dashed #666;
@@ -93,8 +98,14 @@
             padding: 0 4px;
             color: #0b1f33;
         }
+        /* 位置指定 */
+        .pos-customer { grid-column: 1 / 2; grid-row: 1 / 2; }
+        .pos-price-per-gram { grid-column: 2 / 3; grid-row: 1 / 2; }
+        .pos-date { grid-column: 3 / 4; grid-row: 1 / 2; }
+        .pos-settle-method { grid-column: 1 / 2; grid-row: 2 / 3; }
+        .pos-out-no { grid-column: 3 / 4; grid-row: 2 / 3; }
 
-        /* 明细表格：10个字段排成5行2列，顺序严格按照截图 */
+        /* 明细表格 (6列) */
         .detail-section {
             margin: 24px 0 16px;
             border: 1px solid #333;
@@ -103,64 +114,83 @@
             width: 100%;
             border-collapse: collapse;
         }
-        .detail-table td {
+        .detail-table th, .detail-table td {
             border: 1px solid #333;
-            padding: 10px 8px;
+            padding: 8px 6px;
+            text-align: center;
             vertical-align: middle;
         }
-        .label-cell {
-            font-weight: 600;
+        .detail-table th {
             background-color: #f3f3f3;
-            width: 15%;
-            text-align: center;
-        }
-        .value-cell {
-            width: 35%;
-            text-align: left;
-            padding-left: 12px;
-        }
-
-        /* 底部存料区域 */
-        .stock-area {
-            margin-top: 24px;
-            border: 1px solid #333;
-            background: #fefefe;
-        }
-        .stock-row {
-            display: flex;
-            border-bottom: 1px solid #333;
-        }
-        .stock-row:last-child { border-bottom: none; }
-        .stock-label {
-            width: 120px;
             font-weight: 600;
-            background: #f3f3f3;
-            padding: 10px 12px;
-            border-right: 1px solid #333;
-            text-align: center;
         }
-        .stock-value {
-            flex: 1;
-            padding: 10px 12px;
-            min-height: 40px;
-            color: #0b1f33;
+        .detail-table td {
+            text-align: left;
+            padding-left: 10px;
+        }
+        .detail-table td.number-cell {
+            text-align: right;
+            padding-right: 10px;
         }
 
-        .footer-info {
+        /* 右侧信息区（抵料克重、需补料重、旧换工费 + 总价） */
+        .right-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            margin: 16px 0 20px;
+        }
+        .info-line {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 12px;
+        }
+        .info-item {
+            display: flex;
+            align-items: baseline;
+            font-size: 15px;
+        }
+        .info-label {
+            font-weight: 600;
+            width: 80px;
+        }
+        .info-label::after {
+            content: "：";
+        }
+        .info-value {
+            min-width: 100px;
+            border-bottom: 1px dashed #666;
+            padding: 0 4px;
+            text-align: right;
+        }
+        .total-price-line {
+            margin-top: 4px;
+        }
+
+        /* 底部存料区 */
+        .stock-area {
             display: flex;
             justify-content: space-between;
             margin-top: 30px;
             border-top: 1px dashed #333;
-            padding-top: 12px;
+            padding-top: 16px;
+            font-size: 15px;
         }
-        .signature-left, .signature-right {
+        .stock-item {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
+        .stock-label {
+            font-weight: 600;
+        }
+        .stock-value {
+            min-width: 150px;
             border-bottom: 1px solid #333;
-            min-width: 120px;
-            display: inline-block;
-            text-align: center;
+            padding: 0 8px;
         }
 
-        /* 模态框样式 (多字段筛选版) */
+        /* 模态框样式 (与之前相同，保留筛选功能) */
         .modal {
             display: none;
             position: fixed;
@@ -264,46 +294,47 @@
     <div class="invoice-container">
         <div class="invoice-title">金时出库单</div>
 
-        <!-- 头部：客户、日期、结算方式、结算金价、出库单号 -->
+        <!-- 顶部区域：三列双行 -->
         <div class="header-grid">
-            <div class="header-item"><span class="header-label">客户</span><span class="field-value" id="field_customer"></span></div>
-            <div class="header-item"><span class="header-label">日期</span><span class="field-value" id="field_date"></span></div>
-            <div class="header-item"><span class="header-label">结算方式</span><span class="field-value" id="field_settle_method"></span></div>
-            <div class="header-item"><span class="header-label">结算金价</span><span class="field-value" id="field_settle_price"></span></div>
-            <div class="header-item"><span class="header-label">出库单号</span><span class="field-value" id="field_out_no"></span></div>
+            <div class="header-item pos-customer"><span class="header-label">客户</span><span class="field-value" id="field_customer"></span></div>
+            <div class="header-item pos-price-per-gram"><span class="header-label">结算金价</span><span class="field-value" id="field_settle_per_gram"></span></div>
+            <div class="header-item pos-date"><span class="header-label">日期</span><span class="field-value" id="field_date"></span></div>
+            <div class="header-item pos-settle-method"><span class="header-label">结算方式</span><span class="field-value" id="field_settle_method"></span></div>
+            <div class="header-item pos-out-no"><span class="header-label">出库单号</span><span class="field-value" id="field_out_no"></span></div>
         </div>
 
-        <!-- 明细表格：产品名称、材质、总重、净金重、销售克价、实售附加、抵料克重、需补料重、旧换工费、总价 -->
+        <!-- 明细表格：产品名称、材质、总重、净金重、销售克价、实售附加 -->
         <div class="detail-section">
             <table class="detail-table">
-                <tr><td class="label-cell">产品名称</td><td class="value-cell" id="field_product_name"></td><td class="label-cell">材质</td><td class="value-cell" id="field_material"></td></tr>
-                <tr><td class="label-cell">总重</td><td class="value-cell" id="field_total_weight"></td><td class="label-cell">净金重</td><td class="value-cell" id="field_net_gold_weight"></td></tr>
-                <tr><td class="label-cell">销售克价</td><td class="value-cell" id="field_labor_price"></td><td class="label-cell">实售附加</td><td class="value-cell" id="field_actual_extra"></td></tr>
-                <tr><td class="label-cell">抵料克重</td><td class="value-cell" id="field_offset_weight"></td><td class="label-cell">需补料重</td><td class="value-cell" id="field_need_supply"></td></tr>
-                <tr><td class="label-cell">旧换工费</td><td class="value-cell" id="field_old_exchange_fee"></td><td class="label-cell">总价</td><td class="value-cell" id="field_total_price"></td></tr>
+                <thead>
+                    <tr><th>产品名称</th><th>材质</th><th>总重</th><th>净金重</th><th>销售克价</th><th>实售附加</th></tr>
+                </thead>
+                <tbody id="detailRows">
+                    <tr><td colspan="6" style="text-align:center; color:#999;">请选择记录加载</td></tr>
+                </tbody>
             </table>
         </div>
 
-        <!-- 底部存料区域：上单存料、本单存料 -->
-        <div class="stock-area">
-            <div class="stock-row">
-                <div class="stock-label">上单存料：</div>
-                <div class="stock-value" id="field_last_stock">—</div>
+        <!-- 右侧信息区：抵料克重、需补料重、旧换工费 + 总价 -->
+        <div class="right-info">
+            <div class="info-line">
+                <div class="info-item"><span class="info-label">抵料克重</span><span class="info-value" id="field_offset_weight">—</span></div>
+                <div class="info-item"><span class="info-label">需补料重</span><span class="info-value" id="field_need_supply">—</span></div>
+                <div class="info-item"><span class="info-label">旧换工费</span><span class="info-value" id="field_old_exchange_fee">—</span></div>
             </div>
-            <div class="stock-row">
-                <div class="stock-label">本单存料：</div>
-                <div class="stock-value" id="field_current_stock">—</div>
+            <div class="info-line total-price-line">
+                <div class="info-item"><span class="info-label">总价</span><span class="info-value" id="field_total_price" style="min-width:120px;">—</span></div>
             </div>
         </div>
 
-        <!-- 签章 -->
-        <div class="footer-info">
-            <div><span class="signature-left">制单人：</span></div>
-            <div><span class="signature-right">客户签收：</span></div>
+        <!-- 底部存料区：上单存料（左）、本单存料（右） -->
+        <div class="stock-area">
+            <div class="stock-item"><span class="stock-label">上单存料：</span><span class="stock-value" id="field_last_stock"></span></div>
+            <div class="stock-item"><span class="stock-label">本单存料：</span><span class="stock-value" id="field_current_stock"></span></div>
         </div>
     </div>
 
-    <!-- 模态框：多字段独立筛选 -->
+    <!-- 模态框：多字段筛选记录选择器 -->
     <div id="recordModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -321,7 +352,7 @@
                 </div>
             </div>
             <div style="overflow-x: auto;">
-                <table class="records-table" id="recordsTable">
+                <table class="records-table">
                     <thead><tr><th>客户</th><th>出库单号</th><th>产品名称</th><th>材质</th><th>日期</th><th>总重</th><th>操作</th></tr></thead>
                     <tbody id="recordsTbody"><tr><td colspan="7" class="no-data">加载中...</td></tr></tbody>
                 </table>
@@ -332,9 +363,10 @@
 
     <script>
         // ---------- 全局变量 ----------
-        let allRecords = [];
+        let allRecords = [];        // 存储展示对象
         let filteredRecords = [];
 
+        // ---------- 辅助函数 ----------
         function showError(msg) { 
             const err = document.getElementById('errorTip');
             err.textContent = `❌ ${msg}`;
@@ -383,38 +415,53 @@
             } else return typeof raw === 'object' ? JSON.stringify(raw) : String(raw);
         }
 
-        // 填充主单据（注意字段映射：结算金价用 fldBP8qj8G，销售克价用 fldwryId9s）
+        // 填充主单据 (根据最新布局)
         function fillForm(fields) {
-            const set = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = (val === '' || val == null) ? '—' : val; };
-            set('field_customer', extractFieldValue(fields, 'fldRZ3f48d', 'text'));
-            set('field_date', extractFieldValue(fields, 'fldlqphDO1', 'date'));
-            set('field_settle_method', extractFieldValue(fields, 'fldU0bZp9j', 'text'));
-            set('field_settle_price', extractFieldValue(fields, 'fldBP8qj8G', 'number'));   // 结算金价
-            set('field_out_no', extractFieldValue(fields, 'fldBH4bIGR', 'value'));
-            set('field_product_name', extractFieldValue(fields, 'fldfwaBoti', 'joinText'));
-            set('field_material', extractFieldValue(fields, 'fldXBLcZ1R', 'text'));
-            set('field_total_weight', extractFieldValue(fields, 'fldTl9D94f', 'number'));
-            set('field_net_gold_weight', extractFieldValue(fields, 'fldskrMb67', 'number'));
-            set('field_labor_price', extractFieldValue(fields, 'fldwryId9s', 'number'));    // 销售克价（原工费单价）
-            set('field_actual_extra', extractFieldValue(fields, 'fld4taZPc3', 'number'));
-            set('field_offset_weight', extractFieldValue(fields, 'fldskrMb67', 'number'));  // 抵料克重与净金重相同字段（用户指定）
-            set('field_need_supply', extractFieldValue(fields, 'fldpUwDne6', 'number'));
-            set('field_old_exchange_fee', extractFieldValue(fields, 'flduElGPI0', 'number'));
-            set('field_total_price', extractFieldValue(fields, 'fld7SS6pKr', 'number'));
+            const setText = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = (val === '' || val == null) ? '—' : val; };
+            const setNumber = (id, val) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (val === '' || val == null) el.innerText = '—';
+                else { let num = parseFloat(val); el.innerText = isNaN(num) ? '—' : num.toFixed(2); }
+            };
+            // 顶部字段
+            setText('field_customer', extractFieldValue(fields, 'fldRZ3f48d', 'text'));
+            setNumber('field_settle_per_gram', extractFieldValue(fields, 'fldBP8qj8G', 'number'));
+            setText('field_date', extractFieldValue(fields, 'fldlqphDO1', 'date'));
+            setText('field_settle_method', extractFieldValue(fields, 'fldU0bZp9j', 'text'));
+            setText('field_out_no', extractFieldValue(fields, 'fldBH4bIGR', 'value'));
 
-            // 上单存料、本单存料暂时留空（用户要求先空着）
-            set('field_last_stock', '');
-            set('field_current_stock', '');
+            // 明细表格 (只有一行，因为每次只加载一条记录，但为了支持多条？需求是一张单据对应一条记录，故表格只显示当前记录)
+            const productName = extractFieldValue(fields, 'fldfwaBoti', 'joinText') || '—';
+            const material = extractFieldValue(fields, 'fldXBLcZ1R', 'text') || '—';
+            const totalWeight = extractFieldValue(fields, 'fldTl9D94f', 'number');
+            const netGold = extractFieldValue(fields, 'fldskrMb67', 'number');
+            const salePrice = extractFieldValue(fields, 'fldwryId9s', 'number'); // 销售克价
+            const extraFee = extractFieldValue(fields, 'fld4taZPc3', 'number');   // 实售附加
+            const formatNum = (v) => (v !== '' && !isNaN(v)) ? parseFloat(v).toFixed(2) : '—';
+            const detailHtml = `<tr>
+                <td>${escapeHtml(productName)}</td>
+                <td>${escapeHtml(material)}</td>
+                <td class="number-cell">${formatNum(totalWeight)}</td>
+                <td class="number-cell">${formatNum(netGold)}</td>
+                <td class="number-cell">${formatNum(salePrice)}</td>
+                <td class="number-cell">${formatNum(extraFee)}</td>
+            </tr>`;
+            document.getElementById('detailRows').innerHTML = detailHtml;
 
-            // 数值字段格式化（保留两位小数）
-            document.querySelectorAll('[id^="field_"]').forEach(el => {
-                if (el.id.includes('weight') || el.id.includes('price') || el.id.includes('fee') || el.id.includes('total') || el.id.includes('settle_price') || el.id.includes('labor_price')) {
-                    let txt = el.innerText;
-                    if (txt && !isNaN(txt) && txt !== '—') { let num = parseFloat(txt); el.innerText = num.toFixed(2); }
-                }
-            });
+            // 右侧三个字段 + 总价
+            setNumber('field_offset_weight', extractFieldValue(fields, 'fldskrMb67', 'number')); // 抵料克重与净金重相同字段
+            setNumber('field_need_supply', extractFieldValue(fields, 'fldpUwDne6', 'number'));
+            setNumber('field_old_exchange_fee', extractFieldValue(fields, 'flduElGPI0', 'number'));
+            setNumber('field_total_price', extractFieldValue(fields, 'fld7SS6pKr', 'number'));
+
+            // 存料字段留空
+            document.getElementById('field_last_stock').innerText = '';
+            document.getElementById('field_current_stock').innerText = '';
         }
+        function escapeHtml(str) { return String(str).replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
 
+        // 构建展示记录对象 (用于筛选表格)
         function buildDisplayRecord(recordId, fields) {
             const customer = extractFieldValue(fields, 'fldRZ3f48d', 'text') || '—';
             const outNo = extractFieldValue(fields, 'fldBH4bIGR', 'value') || '—';
@@ -426,18 +473,19 @@
             return { recordId, customer, outNo, product, material, date: dateStr, totalWeight, rawFields: fields };
         }
 
+        // 筛选核心
         function applyFilters() {
-            const fc = document.getElementById('filterCustomer').value.trim().toLowerCase();
-            const fo = document.getElementById('filterOutNo').value.trim().toLowerCase();
-            const fp = document.getElementById('filterProduct').value.trim().toLowerCase();
-            const fm = document.getElementById('filterMaterial').value.trim().toLowerCase();
-            const fd = document.getElementById('filterDate').value;
+            const filterCustomer = document.getElementById('filterCustomer').value.trim().toLowerCase();
+            const filterOutNo = document.getElementById('filterOutNo').value.trim().toLowerCase();
+            const filterProduct = document.getElementById('filterProduct').value.trim().toLowerCase();
+            const filterMaterial = document.getElementById('filterMaterial').value.trim().toLowerCase();
+            const filterDate = document.getElementById('filterDate').value;
             filteredRecords = allRecords.filter(rec => {
-                if (fc && !rec.customer.toLowerCase().includes(fc)) return false;
-                if (fo && !rec.outNo.toLowerCase().includes(fo)) return false;
-                if (fp && !rec.product.toLowerCase().includes(fp)) return false;
-                if (fm && !rec.material.toLowerCase().includes(fm)) return false;
-                if (fd && rec.date !== fd) return false;
+                if (filterCustomer && !rec.customer.toLowerCase().includes(filterCustomer)) return false;
+                if (filterOutNo && !rec.outNo.toLowerCase().includes(filterOutNo)) return false;
+                if (filterProduct && !rec.product.toLowerCase().includes(filterProduct)) return false;
+                if (filterMaterial && !rec.material.toLowerCase().includes(filterMaterial)) return false;
+                if (filterDate && rec.date !== filterDate) return false;
                 return true;
             });
             renderRecordsTable();
@@ -459,19 +507,19 @@
             let html = '';
             for (let rec of filteredRecords) {
                 html += `<tr onclick="selectRecord('${rec.recordId}')">
-                             <td>${escapeHtml(rec.customer)}</td>
-                             <td>${escapeHtml(rec.outNo)}</td>
-                             <td>${escapeHtml(rec.product)}</td>
-                             <td>${escapeHtml(rec.material)}</td>
-                             <td>${escapeHtml(rec.date)}</td>
-                             <td>${rec.totalWeight}</td>
-                             <td style="text-align:center">📄 选择</td>
+                            <td>${escapeHtml(rec.customer)}</td>
+                            <td>${escapeHtml(rec.outNo)}</td>
+                            <td>${escapeHtml(rec.product)}</td>
+                            <td>${escapeHtml(rec.material)}</td>
+                            <td>${escapeHtml(rec.date)}</td>
+                            <td>${rec.totalWeight}</td>
+                            <td style="text-align:center">📄 选择</td>
                          </tr>`;
             }
             tbody.innerHTML = html;
         }
-        function escapeHtml(str) { return String(str).replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
 
+        // 选择记录
         window.selectRecord = async function(recordId) {
             const record = allRecords.find(r => r.recordId === recordId);
             if (!record) return;
@@ -482,6 +530,7 @@
             hideError();
         };
 
+        // 打开模态框，拉取数据
         window.openRecordSelector = async function() {
             hideError();
             const modal = document.getElementById('recordModal');
@@ -493,6 +542,7 @@
         };
         function closeModal() { document.getElementById('recordModal').style.display = 'none'; }
 
+        // 从飞书获取所有记录
         async function fetchAllRecords() {
             try {
                 if (!window.bitable || !window.bitable.base) throw new Error('飞书SDK未加载');
@@ -528,6 +578,7 @@
             }
         }
 
+        // 打印
         window.printDocument = function() {
             const customer = document.getElementById('field_customer').innerText;
             if (customer === '' || customer === '—') {
@@ -541,12 +592,15 @@
             }
         };
 
+        // 点击模态框外部关闭
         window.onclick = function(event) {
             const modal = document.getElementById('recordModal');
             if (event.target === modal) closeModal();
         };
         window.onload = function() {
-            document.querySelectorAll('.field-value, .stock-value').forEach(el => el.innerText = '—');
+            // 初始占位
+            document.querySelectorAll('.field-value, .info-value, .stock-value').forEach(el => el.innerText = '—');
+            document.getElementById('detailRows').innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999;">请点击「选择单据」加载数据</td></tr>';
         };
     </script>
 </body>
