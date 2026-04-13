@@ -560,7 +560,6 @@
         }
 
         // ---------- 增强排序逻辑 ----------
-        // 从出库单号中提取数字部分（例如 JSCK04090035 -> 4090035）
         function extractOutNoNumber(outNo) {
             if (!outNo) return 0;
             const match = outNo.match(/\d+/);
@@ -575,12 +574,10 @@
                 if (sortField === 'date') {
                     valA = new Date(a.date);
                     valB = new Date(b.date);
-                    // 处理无效日期
                     if (isNaN(valA)) valA = new Date(0);
                     if (isNaN(valB)) valB = new Date(0);
                 } 
                 else if (sortField === 'outNo') {
-                    // 按数字部分排序
                     valA = extractOutNoNumber(a.outNo);
                     valB = extractOutNoNumber(b.outNo);
                 }
@@ -599,6 +596,7 @@
         }
 
         function handleSort(field) {
+            console.log(`排序触发: field=${field}, 当前排序字段=${sortField}, 当前顺序=${sortOrder}`);
             if (sortField === field) {
                 sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
             } else {
@@ -686,6 +684,8 @@
             applySorting();
             renderRecordsTable();
             updateSortIcons();
+            // 重新绑定排序事件（确保模态框内 th 可点击）
+            bindSortEvents();
         };
         function closeModal() { document.getElementById('recordModal').style.display = 'none'; }
 
@@ -742,11 +742,15 @@
             headers.forEach(th => {
                 const field = th.getAttribute('data-field');
                 if (field) {
-                    th.style.cursor = 'pointer';
-                    th.addEventListener('click', (e) => {
+                    // 移除旧事件避免重复绑定
+                    th.removeEventListener('click', th._clickHandler);
+                    const handler = (e) => {
                         e.stopPropagation();
                         handleSort(field);
-                    });
+                    };
+                    th.addEventListener('click', handler);
+                    th._clickHandler = handler;
+                    th.style.cursor = 'pointer';
                 }
             });
         }
@@ -760,6 +764,7 @@
             const allDisplayFields = document.querySelectorAll('.field-value, .info-value, .stock-value, .logistics-value, .total-value');
             allDisplayFields.forEach(el => el.innerText = '');
             document.getElementById('detailRows').innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999;">请点击「选择单据」加载数据</td></tr>';
+            // 初始绑定（虽然模态框未打开，但表头存在）
             bindSortEvents();
         };
     </script>
