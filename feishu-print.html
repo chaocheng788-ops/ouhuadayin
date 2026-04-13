@@ -373,7 +373,7 @@
         </div>
     </div>
 
-    <!-- 模态框：全局搜索 + 排序（增强出库单号数字排序） -->
+    <!-- 模态框 -->
     <div id="recordModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -419,7 +419,7 @@
         }
         function hideError() { document.getElementById('errorTip').style.display = 'none'; }
 
-        // 字段提取函数 (与之前保持一致)
+        // 字段提取函数
         function extractFieldValue(fields, fieldId, rule) {
             if (!fields || !fieldId) return '';
             const raw = fields[fieldId];
@@ -547,7 +547,6 @@
             }); 
         }
 
-        // 构建展示记录对象
         function buildDisplayRecord(recordId, fields) {
             const customer = extractFieldValue(fields, 'fldRZ3f48d', 'text') || '';
             const outNo = extractFieldValue(fields, 'fldBH4bIGR', 'value') || '';
@@ -559,7 +558,7 @@
             return { recordId, customer, outNo, product, material, date: dateStr, totalWeight, rawFields: fields };
         }
 
-        // ---------- 增强排序逻辑 ----------
+        // 排序辅助函数
         function extractOutNoNumber(outNo) {
             if (!outNo) return 0;
             const match = outNo.match(/\d+/);
@@ -611,8 +610,10 @@
         function updateSortIcons() {
             const headers = document.querySelectorAll('#recordsTable th');
             headers.forEach(th => {
-                const field = th.getAttribute('data-field');
                 const iconSpan = th.querySelector('.sort-icon');
+                // 只处理包含 .sort-icon 的表头列
+                if (!iconSpan) return;
+                const field = th.getAttribute('data-field');
                 if (field === sortField) {
                     iconSpan.innerHTML = sortOrder === 'asc' ? '▲' : '▼';
                 } else {
@@ -655,7 +656,7 @@
                             <td>${escapeHtml(rec.date)}</td>
                             <td>${rec.totalWeight}</td>
                             <td style="text-align:center">📄 选择</td>
-                         </tr>`;
+                          </tr>`;
             }
             tbody.innerHTML = html;
         }
@@ -684,7 +685,6 @@
             applySorting();
             renderRecordsTable();
             updateSortIcons();
-            // 重新绑定排序事件（确保模态框内 th 可点击）
             bindSortEvents();
         };
         function closeModal() { document.getElementById('recordModal').style.display = 'none'; }
@@ -742,7 +742,6 @@
             headers.forEach(th => {
                 const field = th.getAttribute('data-field');
                 if (field) {
-                    // 移除旧事件避免重复绑定
                     th.removeEventListener('click', th._clickHandler);
                     const handler = (e) => {
                         e.stopPropagation();
@@ -764,7 +763,6 @@
             const allDisplayFields = document.querySelectorAll('.field-value, .info-value, .stock-value, .logistics-value, .total-value');
             allDisplayFields.forEach(el => el.innerText = '');
             document.getElementById('detailRows').innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999;">请点击「选择单据」加载数据</td></tr>';
-            // 初始绑定（虽然模态框未打开，但表头存在）
             bindSortEvents();
         };
     </script>
